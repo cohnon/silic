@@ -1,0 +1,5 @@
+use io;
+
+pub func main() {
+    io:println("hello world!");
+}
