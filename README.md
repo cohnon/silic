@@ -27,47 +27,15 @@
 
 `cd silic`
 
-`make && ./silic test/hello_world/main.c`
+`make && ./silic examples/main.sil`
 
 ## Examples
 
 `hello_world.sil`
 ```rust
-use std;
+use io;
 
-fn main() {
-    std:print("hey, there!\n");
-}
-```
-
-`generics.sil`
-```rust
-use cstd;
-
-fn alloc(T: type, usize len) -> T {
-    cstd:malloc(T.size * len) as *T
-}
-```
-
-`barebones.sil`
-```rust
-fn _start() -> unreachable { 
-    // write syscall
-    asm volatile (
-        a = 1,
-        D = 1,
-        S = "hey, there!\n",
-        d = 12,
-        rcx, r11
-    ) -> a { "syscall" }
-
-    // exit syscall
-    asm volatile (
-        a = 60,
-        D = 0,
-        rcx, r11
-    ) -> a { "syscall" }
-
-    unreachable
+pub func main() {
+    io:println("hello world");
 }
 ```
