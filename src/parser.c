@@ -45,6 +45,15 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
     return tok;
 }
 
+static AstType *parse_type(ParserCtx *ctx) {
+    AstType *type = os_alloc(AstType);
+
+    Token *type_tok = try (expect_tok(ctx, Token_Symbol));
+    type->span = type_tok->span;
+
+    return type;
+}
+
 static AstItem *parse_item(ParserCtx *ctx) {
     AstItem *item = os_alloc(AstItem);
 
@@ -63,7 +72,7 @@ static AstItem *parse_item(ParserCtx *ctx) {
     while (!cur_tok_is(ctx, Token_RParen)) {
         try (expect_tok(ctx, Token_Symbol));
         try (expect_tok(ctx, Token_Colon));
-        try (expect_tok(ctx, Token_Symbol));
+        try (parse_type(ctx));
 
         eat_tok_if(ctx, Token_Comma);
     }
@@ -71,7 +80,8 @@ static AstItem *parse_item(ParserCtx *ctx) {
 
     try (expect_tok(ctx, Token_RParen));
     try (expect_tok(ctx, Token_RArrow));
-    try (expect_tok(ctx, Token_Symbol));
+
+    try (parse_type(ctx));
 
     try (expect_tok(ctx, Token_LBrace));
     try (expect_tok(ctx, Token_RBrace));

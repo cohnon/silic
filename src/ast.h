@@ -8,6 +8,7 @@
 
 typedef enum AstTypeKind {
     AstType_Symbol,
+    AstType_Int,
 } AstTypeKind;
 
 typedef struct AstType {
