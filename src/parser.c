@@ -18,6 +18,14 @@ static bool cur_tok_is(ParserCtx *ctx, TokenKind kind) {
     return cur_tok(ctx)->kind == kind;
 }
 
+static Token *eat_tok(ParserCtx *ctx) {
+    Token *tok = cur_tok(ctx);
+
+    ctx->tok_idx += 1;
+
+    return tok;
+}
+
 static bool eat_tok_if(ParserCtx *ctx, TokenKind kind) {
     if (cur_tok_is(ctx, kind)) {
         ctx->tok_idx += 1;
@@ -27,8 +35,14 @@ static bool eat_tok_if(ParserCtx *ctx, TokenKind kind) {
     return false;
 }
 
-static bool expect_tok(ParserCtx *ctx, TokenKind kind) {
-    return eat_tok_if(ctx, kind);
+static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
+    Token *tok = eat_tok(ctx);
+    
+    if (tok->kind != kind) {
+        return NULL;
+    }
+
+    return tok;
 }
 
 static AstItem *parse_item(ParserCtx *ctx) {
@@ -39,9 +53,22 @@ static AstItem *parse_item(ParserCtx *ctx) {
         item->public = true;
     }
 
-    try (expect_tok(ctx, Token_Func  ));
-    try (expect_tok(ctx, Token_Symbol));
+    try (expect_tok(ctx, Token_Func));
+
+    Token *func_name_tok = try (expect_tok(ctx, Token_Symbol));
+    item->name = func_name_tok->span;
+
     try (expect_tok(ctx, Token_LParen));
+
+    while (!cur_tok_is(ctx, Token_RParen)) {
+        try (expect_tok(ctx, Token_Symbol));
+        try (expect_tok(ctx, Token_Colon));
+        try (expect_tok(ctx, Token_Symbol));
+
+        eat_tok_if(ctx, Token_Comma);
+    }
+
+
     try (expect_tok(ctx, Token_RParen));
     try (expect_tok(ctx, Token_RArrow));
     try (expect_tok(ctx, Token_Symbol));
