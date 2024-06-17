@@ -16,10 +16,14 @@ typedef struct AstType {
     Span span;
 } AstType;
 
+typedef struct AstFuncParam {
+    Span     name;
+    AstType *type;
+} AstFuncParam;
+
 typedef struct AstFuncSig {
-    Array(AstType) param_types;
-    Array(Span)    param_names;
-    AstType        ret_type;
+    Array(AstFuncParam) params;
+    AstType            *ret_type;
 } AstFuncSig;
 
 typedef struct AstFunc {
@@ -27,7 +31,7 @@ typedef struct AstFunc {
 } AstFunc;
 
 typedef enum AstItemKind {
-    AstItem_Func,
+    AstItem_FuncDef,
 } AstItemKind;
 
 typedef struct AstItem {

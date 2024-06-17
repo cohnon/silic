@@ -25,25 +25,27 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    Module module = (Module){0};
-    module.src = entry_src;
+    Module *module = module_init(entry_src);
 
-    bool lex_passed = lex_module(&module);
+    bool lex_passed = lex_module(module);
     if (!lex_passed) {
         printf("ERROR: failed to lex module\n");
         return 1;
     }
 
-    for (size_t i = 0; i < module.tokens.len; i += 1) {
-        printf("%s ", tok_cstr(array_get_ref(&module.tokens, i)));
-    }
-    printf("\n");
+    tok_debug(module);
 
-    bool parse_passed = parse_module(&module);
+    bool parse_passed = parse_module(module);
     if (!parse_passed) {
         printf("ERROR: failed to parse module\n");
+        array_foreach(module->errors, i) {
+            ErrorMsg *error_msg = array_get_ref(&module->errors, i);
+            error_msg_print(error_msg);
+        }
         return 1;
     }
+
+    ast_debug(module);
 
     return 0;
 }

@@ -1,5 +1,8 @@
 #include "token.h"
 
+#include "array.h"
+#include "module.h"
+#include <stdio.h>
 #include <string.h>
 
 
@@ -61,3 +64,4 @@ char *tok_cstr(Token *token) {
 
     __builtin_unreachable();
 }
+

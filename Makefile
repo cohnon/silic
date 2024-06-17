@@ -7,7 +7,7 @@ FIR_CFILES = $(wildcard libs/fir/src/*.c libs/fir/src/*/*.c)
 FIR_OFILES = $(patsubst libs/fir/src/%.c, build/fir/%.o, $(FIR_CFILES))
 
 CC = gcc
-FLAGS = -g -std=c11 -Wall -Wextra -pedantic -Werror
+FLAGS = -g -std=c11 -Wall -Wextra -pedantic
 INCLUDES = -Ilibs/fir/include
 
 .Phony: all

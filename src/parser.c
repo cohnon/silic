@@ -39,6 +39,9 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
     Token *tok = eat_tok(ctx);
     
     if (tok->kind != kind) {
+        ErrorMsg error_msg = error_msg_init("expected something");
+        array_push(&ctx->module->errors, &error_msg);
+
         return NULL;
     }
 
@@ -56,6 +59,7 @@ static AstType *parse_type(ParserCtx *ctx) {
 
 static AstItem *parse_item(ParserCtx *ctx) {
     AstItem *item = os_alloc(AstItem);
+    array_init(&item->func.sig.params, 8);
 
     item->public = false;
     if (eat_tok_if(ctx, Token_Pub)) {
@@ -70,9 +74,16 @@ static AstItem *parse_item(ParserCtx *ctx) {
     try (expect_tok(ctx, Token_LParen));
 
     while (!cur_tok_is(ctx, Token_RParen)) {
-        try (expect_tok(ctx, Token_Symbol));
+        Token *param_name_tok = try (expect_tok(ctx, Token_Symbol));
         try (expect_tok(ctx, Token_Colon));
-        try (parse_type(ctx));
+        AstType *param_type = try (parse_type(ctx));
+
+        AstFuncParam param = (AstFuncParam){
+            .name = param_name_tok->span,
+            .type = param_type
+        };
+
+        array_push(&item->func.sig.params, &param);
 
         eat_tok_if(ctx, Token_Comma);
     }
@@ -81,7 +92,7 @@ static AstItem *parse_item(ParserCtx *ctx) {
     try (expect_tok(ctx, Token_RParen));
     try (expect_tok(ctx, Token_RArrow));
 
-    try (parse_type(ctx));
+    item->func.sig.ret_type = try (parse_type(ctx));
 
     try (expect_tok(ctx, Token_LBrace));
     try (expect_tok(ctx, Token_RBrace));
@@ -95,7 +106,8 @@ bool parse_module(Module *module) {
     ctx.tok_idx = 0;
 
     while (!cur_tok_is(&ctx, Token_Eof)) {
-        try (parse_item(&ctx));
+        AstItem *item = try (parse_item(&ctx));
+        array_push(&ctx.module->ast, &item);
     }
 
     return true;
