@@ -23,7 +23,7 @@ typedef struct LexerCtx {
     Span         src;
     size_t       src_idx;
     Token       *current_token;
-    TextPosition pos;
+    TextPos pos;
 } LexerCtx;
 
 static char cur_char(LexerCtx *ctx) {
@@ -83,7 +83,7 @@ static void end_token(LexerCtx *ctx) {
 static void skip_whitespace(LexerCtx *ctx) {
     while (ctx->src_idx < ctx->src.len && cur_char(ctx) <= ' ') {
         if (cur_char(ctx) == '\n') {
-            ctx->pos.row += 1;
+            ctx->pos.line += 1;
             // set to 0 since we inc right after
             ctx->pos.col= 0;
         }
@@ -104,7 +104,7 @@ static void lex_symbol(LexerCtx *ctx) {
     while (('a' <= cur_char(ctx) && cur_char(ctx) <= 'z')
     ||     ('A' <= cur_char(ctx) && cur_char(ctx) <= 'Z')
     ||     ('0' <= cur_char(ctx) && cur_char(ctx) <= '9')
-    ||     (cur_char(ctx) == '_')) {
+    ||     cur_char(ctx) == '_' || cur_char(ctx) == '\'') {
         inc(ctx);
     }
 
@@ -257,7 +257,7 @@ bool lex_module(Module *module) {
     ctx.src = module->src;
     ctx.src_idx = 0;
     ctx.current_token = NULL;
-    ctx.pos = (TextPosition){ 1, 1};
+    ctx.pos = (TextPos){ 1, 1};
 
     skip_whitespace(&ctx);
 

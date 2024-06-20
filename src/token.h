@@ -5,10 +5,10 @@
 #include <stdbool.h>
 
 
-typedef struct TextPosition {
+typedef struct TextPos {
+    size_t line;
     size_t col;
-    size_t row;
-} TextPosition;
+} TextPos;
 
 typedef enum TokenKind {
     Token_Invalid,
@@ -57,11 +57,11 @@ typedef enum TokenKind {
 typedef struct Token {
     TokenKind    kind;
     Span         span;
-    TextPosition pos;
+    TextPos pos;
 } Token;
 
 bool tok_eq(Token *a, Token *b);
 bool tok_eq_cstr(Token *a, const char *cstr);
-char *tok_cstr(Token *token);
+char *tok_cstr(TokenKind kind);
 
 #endif

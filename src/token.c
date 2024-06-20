@@ -1,8 +1,5 @@
 #include "token.h"
 
-#include "array.h"
-#include "module.h"
-#include <stdio.h>
 #include <string.h>
 
 
@@ -17,14 +14,14 @@ bool tok_eq_cstr(Token *a, const char *cstr) {
     return strncmp(a->span.ptr, cstr, max_len) == 0;
 }
 
-char *tok_cstr(Token *token) {
-    switch (token->kind) {
+char *tok_cstr(TokenKind kind) {
+    switch (kind) {
     case Token_Invalid: return "<invalid>";
 
-    case Token_Number: return "Number(n)";
-    case Token_String: return "String(str)";
+    case Token_Number: return "number literal";
+    case Token_String: return "string literal";
 
-    case Token_Symbol: return "Symbol(sym)";
+    case Token_Symbol: return "symbol";
 
     case Token_Colon: return ":";
     case Token_Semicolon: return ";";

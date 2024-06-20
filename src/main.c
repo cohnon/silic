@@ -1,5 +1,3 @@
-#include "os.h"
-
 #include "lexer.h"
 #include "parser.h"
 #include <stdio.h>
@@ -15,17 +13,10 @@ int main(int argc, char **argv) {
     }
 
     Span entry_path = (Span){ argv[1], strlen(argv[1]) };
-
-    Span entry_src;
-    bool read_file = os_read_file(&entry_src, entry_path);
-
-    if (!read_file) {
-        printf("couldn't find %s\n", argv[1]);
-
-        return EXIT_FAILURE;
+    Module *module = module_init(entry_path);
+    if (module == NULL) {
+        return 1;
     }
-
-    Module *module = module_init(entry_src);
 
     bool lex_passed = lex_module(module);
     if (!lex_passed) {
@@ -38,10 +29,7 @@ int main(int argc, char **argv) {
     bool parse_passed = parse_module(module);
     if (!parse_passed) {
         printf("ERROR: failed to parse module\n");
-        array_foreach(module->errors, i) {
-            ErrorMsg *error_msg = array_get_ref(&module->errors, i);
-            error_msg_print(error_msg);
-        }
+        error_print(module);
         return 1;
     }
 

@@ -1,5 +1,61 @@
-use io;
+
+/// double.sil
+trait Double
+| func double(self: Self) -> Self
+| func type_size() -> USize
+| func double_twice(self: T) -> Self {
+    self
+    |> double()
+    |> double()
+}
+
+
+/// array.sil
+pub type Array(T')
+| slc: []T'
+| len: USize
+
+pub func new(init_cap: USize) -> Array(T') error Allocator:Error {
+    let slc = try os:alloc(T', init_cap);
+
+    Array(slc, len=0)
+}
+
+pub func push(arr: Array(T'), item: T') error Allocator:Error { .. }
+
+impl Double for Array(T')
+| func double(self: Self) -> Self {
+    self.len *= 2;
+
+    self
+}
+| func type_size() -> USize {
+    @typeinfo(Self).size
+}
+
+impl Display for Array(T')
+| func fmt(self: Self) { "NOTHING" }
+
+
+/// main.sil
+pub func add(a: T', b: T') -> T' errors Sum:Error {
+    let a' = Double:double(a);
+    a' + b
+}
+
 
 pub func main() {
-    io:println("hello world!");
+    let arr: Array(Int) = array:new(Int, 10);
+
+    try array:push(arr, 20);
+
+    let a = match val
+        on 1 -> 2
+        on 2 -> 3
+        on _ -> 4;
+
+    let total = iter:from(arr)
+        |> iter:filter \ a' > 10
+        |> iter:map \ a' * 2
+        |> iter:sum
 }

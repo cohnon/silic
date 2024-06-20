@@ -9,6 +9,7 @@
 
 
 typedef struct Module {
+    Span            filepath;
     Span            src;
     Array(Token)    tokens;
     Array(AstItem*)  ast;

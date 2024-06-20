@@ -5,10 +5,18 @@
 #include <stdio.h>
 
 
-Module *module_init(Span src) {
-    Module *module = os_alloc(Module);
+Module *module_init(Span filepath) {
+    Module *module = os_alloc_T(Module);
 
-    module->src = src;
+    module->filepath = filepath;
+
+    OsReadFileResult read_file_result = os_read_file(filepath);
+    if (!read_file_result.ok) {
+        printf("couldn't find %.*s\n", span_fmt(filepath));
+        return NULL;
+    }
+
+    module->src = read_file_result.src;
 
     array_init(&module->tokens, 32);
     array_init(&module->ast, 16);
@@ -18,12 +26,16 @@ Module *module_init(Span src) {
 }
 
 void tok_debug(Module *module) {
-    array_foreach(module->tokens, i) {
-        Token *token = array_get_ref(&module->tokens, i);
-        printf("%s ", tok_cstr(token));
+    if (module->tokens.len == 0) {
+        return;
     }
 
-    printf("\n\n");
+    array_foreach(module->tokens, i) {
+        Token *token = array_get_ref(&module->tokens, i);
+        printf("%s ", tok_cstr(token->kind));
+    }
+
+    printf("\n");
 }
 
 static void ast_debug_type(AstType *type) {
@@ -31,7 +43,7 @@ static void ast_debug_type(AstType *type) {
 }
 
 static void ast_debug_item(AstItem *item) {
-    printf("@@ Item @@\n");
+    printf("\n@@ Item @@\n");
     printf("func %.*s(", span_fmt(item->name));
 
     array_foreach(item->func.sig.params, i) {
@@ -45,7 +57,7 @@ static void ast_debug_item(AstItem *item) {
 
     printf(") -> ");
     ast_debug_type(item->func.sig.ret_type);
-    printf("\n\n");
+    printf("\n");
 }
 
 void ast_debug(Module *module) {

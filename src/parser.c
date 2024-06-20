@@ -39,8 +39,8 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
     Token *tok = eat_tok(ctx);
     
     if (tok->kind != kind) {
-        ErrorMsg error_msg = error_msg_init("expected something");
-        array_push(&ctx->module->errors, &error_msg);
+        ErrorMsgId error = error_add(ctx->module, tok, "syntax error");
+        error_hint(ctx->module, error, "expected '%s' here", tok_cstr(kind));
 
         return NULL;
     }
@@ -49,7 +49,7 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
 }
 
 static AstType *parse_type(ParserCtx *ctx) {
-    AstType *type = os_alloc(AstType);
+    AstType *type = os_alloc_T(AstType);
 
     Token *type_tok = try (expect_tok(ctx, Token_Symbol));
     type->span = type_tok->span;
@@ -58,7 +58,7 @@ static AstType *parse_type(ParserCtx *ctx) {
 }
 
 static AstItem *parse_item(ParserCtx *ctx) {
-    AstItem *item = os_alloc(AstItem);
+    AstItem *item = os_alloc_T(AstItem);
     array_init(&item->func.sig.params, 8);
 
     item->public = false;
