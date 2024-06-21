@@ -1,6 +1,6 @@
 #include "error_msg.h"
 
-#include "array.h"
+#include "dynarr.h"
 #include "module.h"
 #include "os.h"
 #include <stdarg.h>
@@ -17,10 +17,7 @@ ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...) {
     vsnprintf(formatted_msg, max_len, msg, args);
     va_end(args);
 
-    Span msg_span = (Span){
-        .ptr = formatted_msg,
-        .len = strlen(formatted_msg)
-    };
+    FirSym msg_span = fir_sym_slc(formatted_msg, strlen(formatted_msg));
 
     ErrorMsg error_msg = (ErrorMsg) {
         .msg       = msg_span,
@@ -30,7 +27,7 @@ ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...) {
         .severity  = ErrorMsgSeverity_Error,
     };
 
-    array_push(&module->errors, &error_msg);
+    dynarr_push(&module->errors, &error_msg);
 
     return module->errors.len - 1;
 }
@@ -44,16 +41,13 @@ void error_hint(Module *module, ErrorMsgId id, char *msg, ...) {
     vsnprintf(formatted_msg, max_len, msg, args);
     va_end(args);
 
-    Span hint = (Span){
-        .ptr = formatted_msg,
-        .len = strlen(formatted_msg)
-    };
+    FirSym hint = fir_sym_slc(formatted_msg, strlen(formatted_msg));
 
-    ErrorMsg *error = array_get_ref(&module->errors, id);
+    ErrorMsg *error = dynarr_get_ref(&module->errors, id);
     error->hint = hint;
 }
 
-static void error_print_msg(Span filepath, ErrorMsg *error) {
+static void error_print_msg(FirSym filepath, ErrorMsg *error) {
     // error: syntax error
     //   ╭─ path/to/file.sil
     // 5 │ io:println("hello world.")
@@ -62,13 +56,13 @@ static void error_print_msg(Span filepath, ErrorMsg *error) {
     int line_num_width = 0;
     for (int i = error->line; i > 0; i /= 10) { line_num_width += 1; }
 
-    printf(ANSI_RED "error:" ANSI_RESET " %.*s\n" ANSI_RESET, span_fmt(error->msg));
+    printf(ANSI_RED "error:" ANSI_RESET " %.*s\n" ANSI_RESET, fir_sym_fmt(error->msg));
 
     // print filepath
     printf(
         ANSI_GREY " %.*s ╭─ " ANSI_RESET "%.*s:%zu:%zu\n",
         line_num_width, "     ",
-        span_fmt(filepath),
+        fir_sym_fmt(filepath),
         error->line,
         error->col
     );
@@ -95,15 +89,15 @@ static void error_print_msg(Span filepath, ErrorMsg *error) {
     for (size_t i = 0; i < error->col- 1; i += 1) { putc(' ', stdout); }
     for (size_t i = 0; i < error->span.len; i += 1) { putc('^', stdout); }
     
-    printf(" %.*s", span_fmt(error->hint));
+    printf(" %.*s", fir_sym_fmt(error->hint));
 
 
     printf("\n\n" ANSI_RESET);
 }
 
 void error_print(Module *module) {
-    array_foreach(module->errors, i) {
-        ErrorMsg *error = array_get_ref(&module->errors, i);
+    dynarr_foreach(module->errors, i) {
+        ErrorMsg *error = dynarr_get_ref(&module->errors, i);
         error_print_msg(module->filepath, error);
     }
 }

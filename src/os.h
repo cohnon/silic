@@ -1,7 +1,7 @@
 #ifndef OS_H
 #define OS_H
 
-#include "span.h"
+#include <fir.h>
 #include <stdbool.h>
 
 #define ANSI_RESET "\033[0m"
@@ -14,9 +14,9 @@
 void *os_priv_alloc(size_t size);
 
 typedef struct OsReadFileResult {
-    bool ok;
-    Span src;
+    bool   ok;
+    FirSym src;
 } OsReadFileResult;
-OsReadFileResult os_read_file(Span path);
+OsReadFileResult os_read_file(FirSym path);
 
 #endif

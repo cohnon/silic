@@ -12,7 +12,7 @@ typedef struct ParserCtx {
 } ParserCtx;
 
 static Token *cur_tok(ParserCtx *ctx) {
-    return array_get_ref(&ctx->module->tokens, ctx->tok_idx);
+    return dynarr_get_ref(&ctx->module->tokens, ctx->tok_idx);
 }
 
 static bool cur_tok_is(ParserCtx *ctx, TokenKind kind) {
@@ -94,11 +94,11 @@ static AstExpr *parse_number(ParserCtx *ctx) {
 static AstExpr *parse_mod_path(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
     expr->kind = AstExpr_ModPath;
-    array_init(&expr->mod_path.parts, 2);
+    dynarr_init(&expr->mod_path.parts, 2);
 
     while (true) {
         Token *sym_tok = try (expect_tok(ctx, Token_Symbol));
-        array_push(&expr->mod_path.parts, (&(sym_tok->span)));
+        dynarr_push(&expr->mod_path.parts, (&(sym_tok->span)));
         
         if (!eat_tok_if(ctx, Token_Colon)) {
             break;
@@ -111,13 +111,13 @@ static AstExpr *parse_mod_path(ParserCtx *ctx) {
 static AstExpr *parse_block(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
     expr->kind = AstExpr_Block;
-    array_init(&expr->block.stmts, 8);
+    dynarr_init(&expr->block.stmts, 8);
 
     expect_tok(ctx, Token_LBrace);
 
     while (!cur_tok_is(ctx, Token_RBrace)) {
         AstStmt *stmt = try (parse_stmt(ctx));
-        array_push(&expr->block.stmts, &stmt);
+        dynarr_push(&expr->block.stmts, &stmt);
 
         // only the last statement of a block will have no semicolon
         // (unless it's a kind of control flow)
@@ -230,7 +230,7 @@ static AstItem *parse_item(ParserCtx *ctx) {
     }
 
     item->kind = AstItem_FuncDef;
-    array_init(&item->func.sig.params, 8);
+    dynarr_init(&item->func.sig.params, 8);
 
     try (expect_tok(ctx, Token_Func));
 
@@ -249,7 +249,7 @@ static AstItem *parse_item(ParserCtx *ctx) {
             .type = param_type
         };
 
-        array_push(&item->func.sig.params, &param);
+        dynarr_push(&item->func.sig.params, &param);
 
         eat_tok_if(ctx, Token_Comma);
     }
@@ -272,7 +272,7 @@ bool parse_module(Module *module) {
 
     while (!cur_tok_is(&ctx, Token_Eof)) {
         AstItem *item = try (parse_item(&ctx));
-        array_push(&ctx.module->ast, &item);
+        dynarr_push(&ctx.module->ast, &item);
     }
 
     return true;

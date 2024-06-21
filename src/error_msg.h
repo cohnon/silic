@@ -13,10 +13,10 @@ typedef enum ErrorMsgSeverity {
 
 typedef struct ErrorMsg {
     ErrorMsgSeverity severity;
-    Span             msg;
-    Span             hint;
+    FirSym           msg;
+    FirSym           hint;
 
-    Span             span;
+    FirSym           span;
 
     size_t           line;
     size_t           col;

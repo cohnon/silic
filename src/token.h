@@ -2,6 +2,8 @@
 #define TOKEN_H
 
 #include "span.h"
+#include "fir.h"
+#include "dynarr.h"
 #include <stdbool.h>
 
 
@@ -56,7 +58,7 @@ typedef enum TokenKind {
 
 typedef struct Token {
     TokenKind    kind;
-    Span         span;
+    FirSym       span;
     TextPos pos;
 } Token;
 

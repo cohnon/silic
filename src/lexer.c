@@ -20,7 +20,7 @@
 
 typedef struct LexerCtx {
     Module      *module;
-    Span         src;
+    FirSym       src;
     size_t       src_idx;
     Token       *current_token;
     TextPos pos;
@@ -45,7 +45,7 @@ static void inc2(LexerCtx *ctx) {
 }
 
 static void begin_token(LexerCtx *ctx, TokenKind kind) {
-    Token *token = array_add(&ctx->module->tokens);
+    Token *token = dynarr_add(&ctx->module->tokens);
 
     token->kind = kind;
     token->pos = ctx->pos;

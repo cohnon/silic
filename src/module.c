@@ -6,22 +6,22 @@
 #include <inttypes.h>
 
 
-Module *module_init(Span filepath) {
+Module *module_init(FirSym filepath) {
     Module *module = os_alloc_T(Module);
 
     module->filepath = filepath;
 
     OsReadFileResult read_file_result = os_read_file(filepath);
     if (!read_file_result.ok) {
-        printf("couldn't find %.*s\n", span_fmt(filepath));
+        printf("couldn't find %.*s\n", fir_sym_fmt(filepath));
         return NULL;
     }
 
     module->src = read_file_result.src;
 
-    array_init(&module->tokens, 32);
-    array_init(&module->ast, 16);
-    array_init(&module->errors, 5);
+    dynarr_init(&module->tokens, 32);
+    dynarr_init(&module->ast, 16);
+    dynarr_init(&module->errors, 5);
 
     return module;
 }
@@ -33,8 +33,8 @@ void tok_debug(Module *module) {
 
     printf(ANSI_BLUE "\n@@ Tokens @@\n" ANSI_RESET);
 
-    array_foreach(module->tokens, i) {
-        Token *token = array_get_ref(&module->tokens, i);
+    dynarr_foreach(module->tokens, i) {
+        Token *token = dynarr_get_ref(&module->tokens, i);
         printf("%s ", tok_cstr(token->kind));
     }
 
@@ -42,7 +42,7 @@ void tok_debug(Module *module) {
 }
 
 static void ast_debug_type(AstType *type) {
-    printf("%.*s", span_fmt(type->span));
+    printf("%.*s", fir_sym_fmt(type->span));
 }
 
 static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
@@ -59,9 +59,9 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
     }
     case AstExpr_ModPath: {
         printf("MOD_PATH(");
-        array_foreach(expr->mod_path.parts, i) {
-            Span part = array_get(&expr->mod_path.parts, i);
-            printf("%.*s", span_fmt(part));
+        dynarr_foreach(expr->mod_path.parts, i) {
+            FirSym part = dynarr_get(&expr->mod_path.parts, i);
+            printf("%.*s", fir_sym_fmt(part));
 
             if (i + 1 < expr->mod_path.parts.len) {
                 printf(":");
@@ -72,8 +72,8 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
     }
     case AstExpr_Block: {
         printf("BLOCK\n");
-        array_foreach(expr->block.stmts, i) {
-            AstStmt *stmt = array_get(&expr->block.stmts, i);
+        dynarr_foreach(expr->block.stmts, i) {
+            AstStmt *stmt = dynarr_get(&expr->block.stmts, i);
             ast_debug_expr(stmt->expr.val, indent_lvl + 1);
         }
         break;
@@ -98,11 +98,11 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
 
 static void ast_debug_item(AstItem *item) {
     printf(ANSI_BLUE "\n@@ Item @@\n" ANSI_RESET);
-    printf("func %.*s(", span_fmt(item->name));
+    printf("func %.*s(", fir_sym_fmt(item->name));
 
-    array_foreach(item->func.sig.params, i) {
-        AstFuncParam *param = array_get_ref(&item->func.sig.params, i);
-        printf("%.*s: ", span_fmt(param->name));
+    dynarr_foreach(item->func.sig.params, i) {
+        AstFuncParam *param = dynarr_get_ref(&item->func.sig.params, i);
+        printf("%.*s: ", fir_sym_fmt(param->name));
         ast_debug_type(param->type);
         if (i < item->func.sig.params.len - 1) {
             printf(", ");
@@ -117,7 +117,7 @@ static void ast_debug_item(AstItem *item) {
 }
 
 void ast_debug(Module *module) {
-    array_foreach(module->ast, i) {
-        ast_debug_item(array_get(&module->ast, i));
+    dynarr_foreach(module->ast, i) {
+        ast_debug_item(dynarr_get(&module->ast, i));
     }
 }

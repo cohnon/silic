@@ -7,7 +7,7 @@ void *os_priv_alloc(size_t size) {
     return malloc(size);
 }
 
-OsReadFileResult os_read_file(Span path) {
+OsReadFileResult os_read_file(FirSym path) {
     OsReadFileResult result;
     result.ok = false;
 
@@ -44,7 +44,7 @@ OsReadFileResult os_read_file(Span path) {
     fclose(file);
 
     result.ok = true;
-    result.src = (Span){ ptr, file_len };
+    result.src = fir_sym_slc(ptr, file_len);
 
     return result;
 }

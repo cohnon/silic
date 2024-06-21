@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    Span entry_path = (Span){ argv[1], strlen(argv[1]) };
+    FirSym entry_path = fir_sym_slc(argv[1], strlen(argv[1]));
     Module *module = module_init(entry_path);
     if (module == NULL) {
         return 1;

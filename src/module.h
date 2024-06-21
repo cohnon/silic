@@ -1,23 +1,22 @@
 #ifndef MODULE_H
 #define MODULE_H
 
-#include "array.h"
 #include "ast.h"
+#include "dynarr.h"
 #include "error_msg.h"
 #include "span.h"
 #include "token.h"
 
-
 typedef struct Module {
-    Span            filepath;
-    Span            src;
-    Array(Token)    tokens;
-    Array(AstItem*)  ast;
+    FirSym           filepath;
+    FirSym           src;
+    DynArr(Token)    tokens;
+    DynArr(AstItem*) ast;
 
-    Array(ErrorMsg) errors;
+    DynArr(ErrorMsg) errors;
 } Module;
 
-Module *module_init(Span src);
+Module *module_init(FirSym src);
 void tok_debug(Module *module);
 void ast_debug(Module *module);
 

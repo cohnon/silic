@@ -2,7 +2,8 @@
 #define AST_H
 
 #include "span.h"
-#include "array.h"
+#include "dynarr.h"
+#include <fir.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -17,7 +18,7 @@ typedef enum AstTypeKind {
 
 typedef struct AstType {
     AstTypeKind kind;
-    Span span;
+    FirSym span;
 } AstType;
 
 typedef enum AstExprKind {
@@ -39,12 +40,12 @@ typedef enum AstExprKind {
 typedef struct AstNumber {
     union {
         uint64_t integral;
-        double  decimal;
+        double   decimal;
     };
 } AstNumber;
 
 typedef struct AstString {
-    Span val;
+    FirSym val;
 } AstString;
 
 typedef struct AstBool {
@@ -52,11 +53,11 @@ typedef struct AstBool {
 } AstBool;
 
 typedef struct AstBlock {
-    Array(AstStmt*) stmts;
+    DynArr(AstStmt*) stmts;
 } AstBlock;
 
 typedef struct AstLet {
-    Span     name;
+    FirSym   name;
     AstType *type;
     AstExpr *val;
 } AstLet;
@@ -95,12 +96,12 @@ typedef struct AstUnOp {
 } AstUnOp;
 
 typedef struct AstModPath {
-    Array(Span) parts;
+    DynArr(FirSym) parts;
 } AstModPath;
 
 typedef struct AstFuncCall {
-    AstExpr        *target;
-    Array(AstExpr*) args;
+    AstExpr         *target;
+    DynArr(AstExpr*) args;
 } AstFuncCall;
 
 typedef struct AstExpr {
@@ -140,13 +141,13 @@ typedef struct AstStmt {
 } AstStmt;
 
 typedef struct AstFuncParam {
-    Span     name;
+    FirSym     name;
     AstType *type;
 } AstFuncParam;
 
 typedef struct AstFuncSig {
-    Array(AstFuncParam) params;
-    AstType            *ret_type;
+    DynArr(AstFuncParam) params;
+    AstType             *ret_type;
 } AstFuncSig;
 
 typedef struct AstFunc {
@@ -160,9 +161,9 @@ typedef enum AstItemKind {
 
 typedef struct AstItem {
     AstItemKind kind;
-    bool public;
+    bool        public;
 
-    Span name;
+    FirSym      name;
 
     union {
         AstFunc func;
