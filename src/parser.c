@@ -37,34 +37,21 @@ static bool eat_tok_if(ParserCtx *ctx, TokenKind kind) {
 }
 
 static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
-    Token *tok = eat_tok(ctx);
-    
-    if (tok->kind != kind) {
-        ErrorMsgId error = error_add(ctx->module, tok, "syntax error");
-        error_hint(ctx->module, error, "expected '%s' here", tok_cstr(kind));
-
-        return NULL;
-    }
-
-    return tok;
-}
-
-static Token *expect_semicolon(ParserCtx *ctx) {
-    if (!cur_tok_is(ctx, Token_Semicolon)) {
-        // create a semicolon token for the error
-        Token *semicolon_tok = os_alloc_T(Token);
+    if (!cur_tok_is(ctx, kind)) {
+        // create a token for the expected token
+        Token *expected_tok = os_alloc_T(Token);
 
         Token *prev_tok = &ctx->module->tokens.ptr[ctx->tok_idx - 1];
 
-        semicolon_tok->pos = prev_tok->pos;
-        semicolon_tok->pos.col += prev_tok->span.len;
+        expected_tok->pos = prev_tok->pos;
+        expected_tok->pos.col += prev_tok->span.len;
 
-        semicolon_tok->span = prev_tok->span;
-        semicolon_tok->span.ptr += prev_tok->span.len;
-        semicolon_tok->span.len = 1;
+        expected_tok->span = prev_tok->span;
+        expected_tok->span.ptr += prev_tok->span.len;
+        expected_tok->span.len = 1;
 
-        ErrorMsgId error = error_add(ctx->module, semicolon_tok, "syntax error");
-        error_hint(ctx->module, error, "missing semicolon");
+        ErrorMsgId error = error_add(ctx->module, expected_tok, "syntax error");
+        error_hint(ctx->module, error, "expected %s here", tok_cstr(kind));
 
         return NULL;
     }
@@ -104,6 +91,23 @@ static AstExpr *parse_number(ParserCtx *ctx) {
     return expr;
 }
 
+static AstExpr *parse_mod_path(ParserCtx *ctx) {
+    AstExpr *expr = os_alloc_T(AstExpr);
+    expr->kind = AstExpr_ModPath;
+    array_init(&expr->mod_path.parts, 2);
+
+    while (true) {
+        Token *sym_tok = try (expect_tok(ctx, Token_Symbol));
+        array_push(&expr->mod_path.parts, (&(sym_tok->span)));
+        
+        if (!eat_tok_if(ctx, Token_Colon)) {
+            break;
+        }
+    }
+
+    return expr;
+}
+
 static AstExpr *parse_block(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
     expr->kind = AstExpr_Block;
@@ -129,7 +133,7 @@ static AstExpr *parse_block(ParserCtx *ctx) {
     if (!eat_tok_if(ctx, Token_RBrace)) {
         assert(!cur_tok_is(ctx, Token_Semicolon));
 
-        try (expect_semicolon(ctx));
+        try (expect_tok(ctx, Token_Semicolon));
     }
 
     return expr;
@@ -138,7 +142,15 @@ static AstExpr *parse_block(ParserCtx *ctx) {
 static AstExpr *parse_expr_primary(ParserCtx *ctx) {
     switch (cur_tok(ctx)->kind) {
     case Token_Number: return parse_number(ctx);
+    case Token_Symbol: return parse_mod_path(ctx);
     case Token_LBrace: return parse_block(ctx);
+    case Token_LParen: {
+        eat_tok(ctx);
+        AstExpr *expr = try (parse_expr(ctx));
+        try (expect_tok(ctx, Token_RParen));
+
+        return expr;
+    }
     default: return NULL;
     }
 }

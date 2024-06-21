@@ -31,6 +31,8 @@ void tok_debug(Module *module) {
         return;
     }
 
+    printf(ANSI_BLUE "\n@@ Tokens @@\n" ANSI_RESET);
+
     array_foreach(module->tokens, i) {
         Token *token = array_get_ref(&module->tokens, i);
         printf("%s ", tok_cstr(token->kind));
@@ -53,6 +55,19 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
     switch (expr->kind) {
     case AstExpr_Number: {
         printf("NUMBER(%" PRIu64 ")\n", expr->number.integral);
+        break;
+    }
+    case AstExpr_ModPath: {
+        printf("MOD_PATH(");
+        array_foreach(expr->mod_path.parts, i) {
+            Span part = array_get(&expr->mod_path.parts, i);
+            printf("%.*s", span_fmt(part));
+
+            if (i + 1 < expr->mod_path.parts.len) {
+                printf(":");
+            }
+        }
+        printf(")\n");
         break;
     }
     case AstExpr_Block: {
@@ -82,7 +97,7 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
 }
 
 static void ast_debug_item(AstItem *item) {
-    printf("\n@@ Item @@\n");
+    printf(ANSI_BLUE "\n@@ Item @@\n" ANSI_RESET);
     printf("func %.*s(", span_fmt(item->name));
 
     array_foreach(item->func.sig.params, i) {
@@ -98,7 +113,7 @@ static void ast_debug_item(AstItem *item) {
     ast_debug_type(item->func.sig.ret_type);
     printf("\n");
 
-    ast_debug_expr(item->func.body, 1);
+    ast_debug_expr(item->func.body, 0);
 }
 
 void ast_debug(Module *module) {
