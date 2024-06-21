@@ -135,12 +135,63 @@ static AstExpr *parse_block(ParserCtx *ctx) {
     return expr;
 }
 
-static AstExpr *parse_expr(ParserCtx *ctx) {
+static AstExpr *parse_expr_primary(ParserCtx *ctx) {
     switch (cur_tok(ctx)->kind) {
     case Token_Number: return parse_number(ctx);
     case Token_LBrace: return parse_block(ctx);
     default: return NULL;
     }
+}
+
+typedef struct Operator {
+    AstBinOpKind kind;
+    int          prec_l;
+    int          prec_r;
+} Operator;
+
+static Operator parse_operator(ParserCtx *ctx) {
+    switch (cur_tok(ctx)->kind) {
+    case Token_Plus: return (Operator){ AstBinOp_Add, 1, 2 };
+    case Token_Dash: return (Operator){ AstBinOp_Sub, 1, 2 };
+
+    case  Token_Star: return (Operator){ AstBinOp_Mul, 3, 4 };
+    case Token_Slash: return (Operator){ AstBinOp_Div, 3, 4 };
+
+    default: return (Operator){ 0, -1, -1 };
+    }
+}
+
+static AstExpr *parse_expr_prec(ParserCtx *ctx, int prec) {
+    AstExpr *lhs = try (parse_expr_primary(ctx));
+
+    while (true) {
+        Operator op = parse_operator(ctx);
+
+        // no more operators
+        if (op.prec_l == -1) { break; }
+
+        if (op.prec_l < prec) { break; }
+
+        // consume the operator
+        eat_tok(ctx);
+
+        AstExpr *rhs = try (parse_expr_prec(ctx, op.prec_r));
+
+        AstExpr *op_expr = os_alloc_T(AstExpr);
+        op_expr->kind = AstExpr_BinOp;
+
+        op_expr->bin_op.kind = op.kind;
+        op_expr->bin_op.lhs = lhs;
+        op_expr->bin_op.rhs = rhs;
+
+        lhs = op_expr;
+    }
+
+    return lhs;
+}
+
+static AstExpr *parse_expr(ParserCtx *ctx) {
+    return parse_expr_prec(ctx, 0);
 }
 
 static AstStmt *parse_stmt(ParserCtx *ctx) {

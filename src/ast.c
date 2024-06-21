@@ -6,3 +6,4 @@ bool ast_has_implicit_semicolon(AstExpr *expr) {
 
     return (kind == AstExpr_Block);
 }
+

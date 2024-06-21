@@ -8,11 +8,6 @@
 #include <string.h>
 
 
-#define ANSI_RESET "\033[0m"
-#define ANSI_RED   "\033[1;31m"
-#define ANSI_BLUE  "\033[34m"
-#define ANSI_GREY  "\033[90m"
-
 ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...) {
     size_t max_len = strlen(msg) + 256;
     char *formatted_msg = os_alloc(char, 256);

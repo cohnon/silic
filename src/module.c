@@ -3,6 +3,7 @@
 #include "ast.h"
 #include "os.h"
 #include <stdio.h>
+#include <inttypes.h>
 
 
 Module *module_init(Span filepath) {
@@ -42,6 +43,44 @@ static void ast_debug_type(AstType *type) {
     printf("%.*s", span_fmt(type->span));
 }
 
+static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
+    printf(ANSI_GREY);
+    for (int i = 0; i < indent_lvl; i += 1) {
+        printf("│ ");
+    }
+    printf(ANSI_RESET);
+
+    switch (expr->kind) {
+    case AstExpr_Number: {
+        printf("NUMBER(%" PRIu64 ")\n", expr->number.integral);
+        break;
+    }
+    case AstExpr_Block: {
+        printf("BLOCK\n");
+        array_foreach(expr->block.stmts, i) {
+            AstStmt *stmt = array_get(&expr->block.stmts, i);
+            ast_debug_expr(stmt->expr.val, indent_lvl + 1);
+        }
+        break;
+    }
+    case AstExpr_BinOp: {
+        printf("BINOP(");
+        switch (expr->bin_op.kind) {
+        case AstBinOp_Add: printf("+"); break;
+        case AstBinOp_Sub: printf("-"); break;
+        case AstBinOp_Mul: printf("*"); break;
+        case AstBinOp_Div: printf("/"); break;
+        default: printf("<unhandled operator>");
+        }
+        printf(")\n");
+        ast_debug_expr(expr->bin_op.lhs, indent_lvl + 1);
+        ast_debug_expr(expr->bin_op.rhs, indent_lvl + 1);
+        break;
+    }
+    default: printf("<unhandled expr>\n"); break;
+    }
+}
+
 static void ast_debug_item(AstItem *item) {
     printf("\n@@ Item @@\n");
     printf("func %.*s(", span_fmt(item->name));
@@ -58,6 +97,8 @@ static void ast_debug_item(AstItem *item) {
     printf(") -> ");
     ast_debug_type(item->func.sig.ret_type);
     printf("\n");
+
+    ast_debug_expr(item->func.body, 1);
 }
 
 void ast_debug(Module *module) {

@@ -21,11 +21,14 @@ void array_deinit(void *arr);
 } while (0)
 void array_priv_push(void *arr, size_t size, void *elem);
 
+void array_pop(void *arr);
+
 #define array_add(arr) (__typeof__( (arr)->ptr ))array_priv_add(arr, sizeof(__typeof__(*(arr)->ptr)))
 void *array_priv_add(void *arr, size_t size);
 
 #define array_get(arr, idx) *array_get_ref(arr, idx)
-#define array_get_ref(arr, idx) (__typeof__( (arr)->ptr ))array_priv_get(arr, sizeof(__typeof__(*(arr)->ptr)), idx)
+#define array_last_ref(arr) array_get_ref(arr, (arr)->len - 1)
+#define array_get_ref(arr, idx) ((__typeof__( (arr)->ptr ))array_priv_get(arr, sizeof(__typeof__(*(arr)->ptr)), idx))
 void *array_priv_get(void *arr, size_t size, size_t idx);
 
 #define array_foreach(arr, i) for (size_t i = 0; i < (arr).len; i += 1)

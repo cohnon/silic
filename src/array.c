@@ -39,6 +39,12 @@ void array_priv_push(void *anyarr, size_t size, void *elem) {
     arr->len += 1;
 }
 
+void array_pop(void *anyarr) {
+    ArrayVoid *arr = (ArrayVoid*)anyarr;
+
+    arr->len -= 1;
+}
+
 void *array_priv_add(void *anyarr, size_t size) {
     ArrayVoid *arr = (ArrayVoid*)anyarr;
 
