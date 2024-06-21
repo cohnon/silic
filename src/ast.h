@@ -7,6 +7,9 @@
 #include <stdint.h>
 
 
+typedef struct AstExpr AstExpr;
+typedef struct AstStmt AstStmt;
+
 typedef enum AstTypeKind {
     AstType_Symbol,
     AstType_Int,
@@ -22,6 +25,7 @@ typedef enum AstExprKind {
     AstExpr_String,
     AstExpr_Bool,
 
+    AstExpr_Block,
     AstExpr_Let,
     AstExpr_Ret,
 
@@ -32,11 +36,9 @@ typedef enum AstExprKind {
     AstExpr_FuncCall,
 } AstExprKind;
 
-typedef struct AstExpr AstExpr;
-
 typedef struct AstNumber {
     union {
-        int64_t integral;
+        uint64_t integral;
         double  decimal;
     };
 } AstNumber;
@@ -48,6 +50,10 @@ typedef struct AstString {
 typedef struct AstBool {
     bool val;
 } AstBool;
+
+typedef struct AstBlock {
+    Array(AstStmt*) stmts;
+} AstBlock;
 
 typedef struct AstLet {
     Span     name;
@@ -100,10 +106,11 @@ typedef struct AstFuncCall {
 typedef struct AstExpr {
     AstExprKind kind;
     union {
-        AstNumber   num;
-        AstString   str;
+        AstNumber   number;
+        AstString   string;
         AstBool     bool_;
 
+        AstBlock    block;
         AstLet      let;
         AstRet      ret;
 
@@ -114,6 +121,23 @@ typedef struct AstExpr {
         AstFuncCall func_call;
     };
 } AstExpr;
+
+typedef enum AstStmtKind {
+    AstStmt_Expr,
+} AstStmtKind;
+
+typedef struct AstStmtExpr {
+    bool     has_semicolon;
+    AstExpr *val;
+} AstStmtExpr;
+
+typedef struct AstStmt {
+    AstStmtKind kind;
+
+    union {
+        AstStmtExpr expr;
+    };
+} AstStmt;
 
 typedef struct AstFuncParam {
     Span     name;
@@ -127,6 +151,7 @@ typedef struct AstFuncSig {
 
 typedef struct AstFunc {
     AstFuncSig sig;
+    AstExpr   *body;
 } AstFunc;
 
 typedef enum AstItemKind {
@@ -143,5 +168,7 @@ typedef struct AstItem {
         AstFunc func;
     };
 } AstItem;
+
+bool ast_has_implicit_semicolon(AstExpr *expr);
 
 #endif

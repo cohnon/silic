@@ -3,6 +3,7 @@
 #include "ast.h"
 #include "os.h"
 #include "try.h"
+#include <assert.h>
 
 
 typedef struct ParserCtx {
@@ -48,6 +49,32 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
     return tok;
 }
 
+static Token *expect_semicolon(ParserCtx *ctx) {
+    if (!cur_tok_is(ctx, Token_Semicolon)) {
+        // create a semicolon token for the error
+        Token *semicolon_tok = os_alloc_T(Token);
+
+        Token *prev_tok = &ctx->module->tokens.ptr[ctx->tok_idx - 1];
+
+        semicolon_tok->pos = prev_tok->pos;
+        semicolon_tok->pos.col += prev_tok->span.len;
+
+        semicolon_tok->span = prev_tok->span;
+        semicolon_tok->span.ptr += prev_tok->span.len;
+        semicolon_tok->span.len = 1;
+
+        ErrorMsgId error = error_add(ctx->module, semicolon_tok, "syntax error");
+        error_hint(ctx->module, error, "missing semicolon");
+
+        return NULL;
+    }
+
+    return eat_tok(ctx);
+}
+
+static AstExpr *parse_expr(ParserCtx *ctx);
+static AstStmt *parse_stmt(ParserCtx *ctx);
+
 static AstType *parse_type(ParserCtx *ctx) {
     AstType *type = os_alloc_T(AstType);
 
@@ -57,14 +84,90 @@ static AstType *parse_type(ParserCtx *ctx) {
     return type;
 }
 
+static AstExpr *parse_number(ParserCtx *ctx) {
+    AstExpr *expr = os_alloc_T(AstExpr);
+    expr->kind = AstExpr_Number;
+
+    Token *num_tok = try (expect_tok(ctx, Token_Number));
+
+    // TODO: handle decimal
+    expr->number.integral = 0;
+
+    for (size_t i = 0; i < num_tok->span.len; i += 1) {
+        char digit_char = num_tok->span.ptr[i];
+        uint64_t digit = digit_char - '0';
+
+        expr->number.integral *= 10;
+        expr->number.integral += digit;
+    }
+
+    return expr;
+}
+
+static AstExpr *parse_block(ParserCtx *ctx) {
+    AstExpr *expr = os_alloc_T(AstExpr);
+    expr->kind = AstExpr_Block;
+    array_init(&expr->block.stmts, 8);
+
+    expect_tok(ctx, Token_LBrace);
+
+    while (!cur_tok_is(ctx, Token_RBrace)) {
+        AstStmt *stmt = try (parse_stmt(ctx));
+        array_push(&expr->block.stmts, &stmt);
+
+        // only the last statement of a block will have no semicolon
+        // (unless it's a kind of control flow)
+        if (stmt->kind == AstStmt_Expr
+        && !stmt->expr.has_semicolon
+        && !ast_has_implicit_semicolon(stmt->expr.val)) {
+            break;
+        }
+    }
+
+    // if we finish the statements and don't reach a '}'
+    // there is a missing semicolon
+    if (!eat_tok_if(ctx, Token_RBrace)) {
+        assert(!cur_tok_is(ctx, Token_Semicolon));
+
+        try (expect_semicolon(ctx));
+    }
+
+    return expr;
+}
+
+static AstExpr *parse_expr(ParserCtx *ctx) {
+    switch (cur_tok(ctx)->kind) {
+    case Token_Number: return parse_number(ctx);
+    case Token_LBrace: return parse_block(ctx);
+    default: return NULL;
+    }
+}
+
+static AstStmt *parse_stmt(ParserCtx *ctx) {
+    AstStmt *stmt = os_alloc_T(AstStmt);
+
+    switch (cur_tok(ctx)->kind) {
+    default: {
+        stmt->kind = AstStmt_Expr;
+        stmt->expr.val = try (parse_expr(ctx));
+        stmt->expr.has_semicolon = eat_tok_if(ctx, Token_Semicolon);
+        break;
+    }
+    }
+
+    return stmt;
+}
+
 static AstItem *parse_item(ParserCtx *ctx) {
     AstItem *item = os_alloc_T(AstItem);
-    array_init(&item->func.sig.params, 8);
 
     item->public = false;
     if (eat_tok_if(ctx, Token_Pub)) {
         item->public = true;
     }
+
+    item->kind = AstItem_FuncDef;
+    array_init(&item->func.sig.params, 8);
 
     try (expect_tok(ctx, Token_Func));
 
@@ -94,8 +197,7 @@ static AstItem *parse_item(ParserCtx *ctx) {
 
     item->func.sig.ret_type = try (parse_type(ctx));
 
-    try (expect_tok(ctx, Token_LBrace));
-    try (expect_tok(ctx, Token_RBrace));
+    item->func.body = try (parse_block(ctx));
 
     return item;
 }

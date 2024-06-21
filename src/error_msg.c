@@ -54,8 +54,6 @@ void error_hint(Module *module, ErrorMsgId id, char *msg, ...) {
         .len = strlen(formatted_msg)
     };
 
-    printf("HINT LEN: %zu", hint.len);
-
     ErrorMsg *error = array_get_ref(&module->errors, id);
     error->hint = hint;
 }
