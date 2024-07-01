@@ -17,7 +17,7 @@ ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...) {
     vsnprintf(formatted_msg, max_len, msg, args);
     va_end(args);
 
-    FirSym msg_span = fir_sym_slc(formatted_msg, strlen(formatted_msg));
+    FirString msg_span = fir_string_slc(formatted_msg, strlen(formatted_msg));
 
     ErrorMsg error_msg = (ErrorMsg) {
         .msg       = msg_span,
@@ -41,13 +41,13 @@ void error_hint(Module *module, ErrorMsgId id, char *msg, ...) {
     vsnprintf(formatted_msg, max_len, msg, args);
     va_end(args);
 
-    FirSym hint = fir_sym_slc(formatted_msg, strlen(formatted_msg));
+    FirString hint = fir_string_slc(formatted_msg, strlen(formatted_msg));
 
     ErrorMsg *error = dynarr_get_ref(&module->errors, id);
     error->hint = hint;
 }
 
-static void error_print_msg(FirSym filepath, ErrorMsg *error) {
+static void error_print_msg(FirString filepath, ErrorMsg *error) {
     // error: syntax error
     //   ╭─ path/to/file.sil
     // 5 │ io:println("hello world.")
@@ -56,13 +56,13 @@ static void error_print_msg(FirSym filepath, ErrorMsg *error) {
     int line_num_width = 0;
     for (int i = error->line; i > 0; i /= 10) { line_num_width += 1; }
 
-    printf(ANSI_RED "error:" ANSI_RESET " %.*s\n" ANSI_RESET, fir_sym_fmt(error->msg));
+    printf(ANSI_RED "error:" ANSI_RESET " %.*s\n" ANSI_RESET, fir_string_fmt(error->msg));
 
     // print filepath
     printf(
         ANSI_GREY " %.*s ╭─ " ANSI_RESET "%.*s:%zu:%zu\n",
         line_num_width, "     ",
-        fir_sym_fmt(filepath),
+        fir_string_fmt(filepath),
         error->line,
         error->col
     );
@@ -89,7 +89,7 @@ static void error_print_msg(FirSym filepath, ErrorMsg *error) {
     for (size_t i = 0; i < error->col- 1; i += 1) { putc(' ', stdout); }
     for (size_t i = 0; i < error->span.len; i += 1) { putc('^', stdout); }
     
-    printf(" %.*s", fir_sym_fmt(error->hint));
+    printf(" %.*s", fir_string_fmt(error->hint));
 
 
     printf("\n\n" ANSI_RESET);

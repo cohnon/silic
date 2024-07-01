@@ -1,7 +1,6 @@
 #ifndef AST_H
 #define AST_H
 
-#include "span.h"
 #include "dynarr.h"
 #include <fir.h>
 #include <stdbool.h>
@@ -18,7 +17,7 @@ typedef enum AstTypeKind {
 
 typedef struct AstType {
     AstTypeKind kind;
-    FirSym span;
+    FirString span;
 } AstType;
 
 typedef enum AstExprKind {
@@ -27,13 +26,13 @@ typedef enum AstExprKind {
     AstExpr_Bool,
 
     AstExpr_Block,
-    AstExpr_Let,
+    AstExpr_VarDef,
     AstExpr_Ret,
 
     AstExpr_UnOp,
     AstExpr_BinOp,
 
-    AstExpr_ModPath,
+    AstExpr_ItemPath,
     AstExpr_FuncCall,
 } AstExprKind;
 
@@ -45,7 +44,7 @@ typedef struct AstNumber {
 } AstNumber;
 
 typedef struct AstString {
-    FirSym val;
+    FirString val;
 } AstString;
 
 typedef struct AstBool {
@@ -56,11 +55,11 @@ typedef struct AstBlock {
     DynArr(AstStmt*) stmts;
 } AstBlock;
 
-typedef struct AstLet {
-    FirSym   name;
+typedef struct AstVar {
+    FirString   name;
     AstType *type;
     AstExpr *val;
-} AstLet;
+} AstVar;
 
 typedef struct AstRet {
     AstExpr *val;
@@ -95,9 +94,9 @@ typedef struct AstUnOp {
     AstExpr    *val;
 } AstUnOp;
 
-typedef struct AstModPath {
-    DynArr(FirSym) parts;
-} AstModPath;
+typedef struct AstItemPath {
+    DynArr(FirString) parts;
+} AstItemPath;
 
 typedef struct AstFuncCall {
     AstExpr         *target;
@@ -112,13 +111,13 @@ typedef struct AstExpr {
         AstBool     bool_;
 
         AstBlock    block;
-        AstLet      let;
+        AstVar      var;
         AstRet      ret;
 
         AstBinOp    bin_op;
         AstUnOp     un_op;
 
-        AstModPath  mod_path;
+        AstItemPath  item_path;
         AstFuncCall func_call;
     };
 } AstExpr;
@@ -140,8 +139,17 @@ typedef struct AstStmt {
     };
 } AstStmt;
 
+typedef enum AstItemKind {
+    AstItem_Use,
+    AstItem_Func,
+} AstItemKind;
+
+typedef struct AstUse {
+    DynArr(FirString) mod_path;
+} AstUse;
+
 typedef struct AstFuncParam {
-    FirSym     name;
+    FirString     name;
     AstType *type;
 } AstFuncParam;
 
@@ -155,20 +163,21 @@ typedef struct AstFunc {
     AstExpr   *body;
 } AstFunc;
 
-typedef enum AstItemKind {
-    AstItem_FuncDef,
-} AstItemKind;
-
 typedef struct AstItem {
     AstItemKind kind;
     bool        public;
 
-    FirSym      name;
+    FirString      name;
 
     union {
         AstFunc func;
+        AstUse  use;
     };
 } AstItem;
+
+
+typedef struct Module Module;
+void ast_debug(Module *module);
 
 bool ast_has_implicit_semicolon(AstExpr *expr);
 

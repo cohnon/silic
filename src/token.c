@@ -53,7 +53,7 @@ char *tok_cstr(TokenKind kind) {
     case Token_Unreachable: return "unreachable";
     case Token_As: return "as";
     case Token_Func: return "func";
-    case Token_Ret: return "ret";
+    case Token_Return: return "return";
     case Token_Pub: return "pub";
 
     case Token_Eof: return "EOF";

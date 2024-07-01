@@ -15,8 +15,8 @@ void *os_priv_alloc(size_t size);
 
 typedef struct OsReadFileResult {
     bool   ok;
-    FirSym src;
+    FirString src;
 } OsReadFileResult;
-OsReadFileResult os_read_file(FirSym path);
+OsReadFileResult os_read_file(FirString path);
 
 #endif

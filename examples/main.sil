@@ -1,0 +1,5 @@
+use add
+
+pub func main() {
+    add:add(1, 2);
+}

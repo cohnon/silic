@@ -1,7 +1,6 @@
 #ifndef ERROR_MSG_H
 #define ERROR_MSG_H
 
-#include "span.h"
 #include "token.h"
 
 typedef unsigned int ErrorMsgId;
@@ -13,10 +12,10 @@ typedef enum ErrorMsgSeverity {
 
 typedef struct ErrorMsg {
     ErrorMsgSeverity severity;
-    FirSym           msg;
-    FirSym           hint;
+    FirString           msg;
+    FirString           hint;
 
-    FirSym           span;
+    FirString           span;
 
     size_t           line;
     size_t           col;

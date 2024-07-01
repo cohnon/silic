@@ -41,14 +41,24 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
         // create a token for the expected token
         Token *expected_tok = os_alloc_T(Token);
 
-        Token *prev_tok = &ctx->module->tokens.ptr[ctx->tok_idx - 1];
+        if (ctx->tok_idx > 0) {
+            
+            Token *prev_tok = &ctx->module->tokens.ptr[ctx->tok_idx - 1];
 
-        expected_tok->pos = prev_tok->pos;
-        expected_tok->pos.col += prev_tok->span.len;
+            expected_tok->pos = prev_tok->pos;
+            expected_tok->pos.col += prev_tok->span.len;
 
-        expected_tok->span = prev_tok->span;
-        expected_tok->span.ptr += prev_tok->span.len;
-        expected_tok->span.len = 1;
+            expected_tok->span = prev_tok->span;
+            expected_tok->span.ptr += prev_tok->span.len;
+            expected_tok->span.len = 1;
+
+        } else {
+
+            // an error on the first token is a special case
+            expected_tok->pos = (TextPos){ 1, 1 };
+            expected_tok->span = cur_tok(ctx)->span;
+
+        }
 
         ErrorMsgId error = error_add(ctx->module, expected_tok, "syntax error");
         error_hint(ctx->module, error, "expected %s here", tok_cstr(kind));
@@ -91,14 +101,14 @@ static AstExpr *parse_number(ParserCtx *ctx) {
     return expr;
 }
 
-static AstExpr *parse_mod_path(ParserCtx *ctx) {
+static AstExpr *parse_item_path(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
-    expr->kind = AstExpr_ModPath;
-    dynarr_init(&expr->mod_path.parts, 2);
+    expr->kind = AstExpr_ItemPath;
+    dynarr_init(&expr->item_path.parts, 2);
 
     while (true) {
         Token *sym_tok = try (expect_tok(ctx, Token_Symbol));
-        dynarr_push(&expr->mod_path.parts, (&(sym_tok->span)));
+        dynarr_push(&expr->item_path.parts, (&(sym_tok->span)));
         
         if (!eat_tok_if(ctx, Token_Colon)) {
             break;
@@ -139,20 +149,63 @@ static AstExpr *parse_block(ParserCtx *ctx) {
     return expr;
 }
 
-static AstExpr *parse_expr_primary(ParserCtx *ctx) {
-    switch (cur_tok(ctx)->kind) {
-    case Token_Number: return parse_number(ctx);
-    case Token_Symbol: return parse_mod_path(ctx);
-    case Token_LBrace: return parse_block(ctx);
-    case Token_LParen: {
-        eat_tok(ctx);
-        AstExpr *expr = try (parse_expr(ctx));
-        try (expect_tok(ctx, Token_RParen));
+static AstExpr *parse_grouped_expr(ParserCtx *ctx) {
+    try (expect_tok(ctx, Token_LParen));
 
-        return expr;
+    AstExpr *expr = try (parse_expr(ctx));
+    try (expect_tok(ctx, Token_RParen));
+
+    return expr;
+}
+
+static AstExpr *parse_func_call(ParserCtx *ctx, AstExpr *target) {
+    AstExpr *expr = os_alloc_T(AstExpr);
+    expr->kind = AstExpr_FuncCall;
+
+    expr->func_call.target = target;
+    dynarr_init(&expr->func_call.args, 4);
+
+    try (expect_tok(ctx, Token_LParen));
+
+    while (!cur_tok_is(ctx, Token_RParen)) {
+        AstExpr *arg = try (parse_number(ctx));
+        dynarr_push(&expr->func_call.args, &arg);
+
+        if (!eat_tok_if(ctx, Token_Comma)) {
+            break;
+        }
     }
-    default: return NULL;
+
+    try (expect_tok(ctx, Token_RParen));
+
+    return expr;
+}
+
+static AstExpr *parse_suffix(ParserCtx *ctx, AstExpr *target) {
+    while (true) {
+        switch (cur_tok(ctx)->kind) {
+        case Token_LParen: target = parse_func_call(ctx, target); break;
+        default: return target;
+        }
     }
+}
+
+static AstExpr *parse_expr_primary(ParserCtx *ctx) {
+    AstExpr *expr = NULL;
+
+    switch (cur_tok(ctx)->kind) {
+    case Token_Number: expr = try (parse_number(ctx)); break;
+    case Token_Symbol: expr = try (parse_item_path(ctx)); break;
+    case Token_LBrace: expr = try (parse_block(ctx)); break;
+    case Token_LParen: expr = try (parse_grouped_expr(ctx)); break;
+    default: {
+        ErrorMsgId err = error_add(ctx->module, cur_tok(ctx), "syntax error");
+        error_hint(ctx->module, err, "expected expression");
+        break;
+    }
+    }
+
+    return parse_suffix(ctx, expr);
 }
 
 typedef struct Operator {
@@ -221,15 +274,42 @@ static AstStmt *parse_stmt(ParserCtx *ctx) {
     return stmt;
 }
 
-static AstItem *parse_item(ParserCtx *ctx) {
-    AstItem *item = os_alloc_T(AstItem);
+static AstItem *parse_use(ParserCtx *ctx, AstItem *item) {
+    item->kind = AstItem_Use;
+    dynarr_init(&item->use.mod_path, 4);
 
-    item->public = false;
-    if (eat_tok_if(ctx, Token_Pub)) {
-        item->public = true;
+    try (expect_tok(ctx, Token_Use));
+
+    while (true) {
+        Token *submod_tok = try (expect_tok(ctx, Token_Symbol));
+
+        dynarr_push(&item->use.mod_path, &submod_tok->span);
+
+        if (!eat_tok_if(ctx, Token_Slash)) {
+            break;
+        }
     }
 
-    item->kind = AstItem_FuncDef;
+    // unqualified items
+    if (eat_tok_if(ctx, Token_Colon)) {
+        try (expect_tok(ctx, Token_LBrace));
+
+        while (!cur_tok_is(ctx, Token_RBrace)) {
+            try (expect_tok(ctx, Token_Symbol));
+
+            if (!eat_tok_if(ctx, Token_Comma)) {
+                break;
+            }
+        }
+
+        try (expect_tok(ctx, Token_RBrace));
+    }
+
+    return item;
+}
+
+static AstItem *parse_func(ParserCtx *ctx, AstItem *item) {
+    item->kind = AstItem_Func;
     dynarr_init(&item->func.sig.params, 8);
 
     try (expect_tok(ctx, Token_Func));
@@ -251,18 +331,39 @@ static AstItem *parse_item(ParserCtx *ctx) {
 
         dynarr_push(&item->func.sig.params, &param);
 
-        eat_tok_if(ctx, Token_Comma);
+        if (!eat_tok_if(ctx, Token_Comma)) {
+            break;
+        }
     }
 
-
     try (expect_tok(ctx, Token_RParen));
-    try (expect_tok(ctx, Token_RArrow));
 
-    item->func.sig.ret_type = try (parse_type(ctx));
+    if (eat_tok_if(ctx, Token_RArrow)) {
+        item->func.sig.ret_type = try (parse_type(ctx));
+    }
+
 
     item->func.body = try (parse_block(ctx));
 
     return item;
+}
+
+static AstItem *parse_item(ParserCtx *ctx) {
+    AstItem *item = os_alloc_T(AstItem);
+
+    item->public = false;
+    if (eat_tok_if(ctx, Token_Pub)) {
+        item->public = true;
+    }
+
+    switch (cur_tok(ctx)->kind) {
+    case Token_Use: return parse_use(ctx, item);
+    case Token_Func: return parse_func(ctx, item);
+    default: {
+        error_add(ctx->module, cur_tok(ctx), "syntax error");
+        return NULL;
+    };
+    }
 }
 
 bool parse_module(Module *module) {
@@ -272,7 +373,12 @@ bool parse_module(Module *module) {
 
     while (!cur_tok_is(&ctx, Token_Eof)) {
         AstItem *item = try (parse_item(&ctx));
-        dynarr_push(&ctx.module->ast, &item);
+
+        if (item->kind == AstItem_Use) {
+            dynarr_push(&ctx.module->uses, &item);
+        } else {
+            dynarr_push(&ctx.module->ast, &item);
+        }
     }
 
     return true;

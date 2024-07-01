@@ -1,5 +1,5 @@
-#include "lexer.h"
-#include "parser.h"
+#include "compiler.h"
+#include <fir.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,28 +12,16 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    FirSym entry_path = fir_sym_slc(argv[1], strlen(argv[1]));
-    Module *module = module_init(entry_path);
-    if (module == NULL) {
+    FirString entry_path = fir_string_slc(argv[1], strlen(argv[1]));
+
+    Compiler *compiler = compiler_init();
+
+    bool compiled = compiler_compile(compiler, entry_path);
+
+    if (!compiled) {
+        printf("failed to compile\n");
         return 1;
     }
-
-    bool lex_passed = lex_module(module);
-    if (!lex_passed) {
-        printf("ERROR: failed to lex module\n");
-        return 1;
-    }
-
-    tok_debug(module);
-
-    bool parse_passed = parse_module(module);
-    if (!parse_passed) {
-        printf("ERROR: failed to parse module\n");
-        error_print(module);
-        return 1;
-    }
-
-    ast_debug(module);
 
     return 0;
 }

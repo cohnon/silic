@@ -1,0 +1,84 @@
+pub trait Iterator {
+    type Item;
+
+    func next(self: Self) -> Item;
+
+    func size_hint(self: Self) -> (USize, ?USize);
+    // ..other functions
+}
+
+func [Iterator] size_hint(self: Any) -> (USize, ?USize) { (0, null) }
+
+
+type Filter {
+    iter: Iterator,
+    predicate: func(Iterator:Item) -> Bool,
+}
+
+func [Iterator] next(self: Filter) -> Iterator:Item {
+    iter:find(self.iter, self.predicate);
+}
+
+pub func filter(
+    self: Iterator,
+    predicate: func(Iterator:Item) -> Bool
+) -> Iterator {
+    Filter {
+        iter: self,
+        predicate,
+    }
+}
+
+type Take {
+    iter: Iterator,
+    n: ISize,
+}
+
+func [Iterator] next(self: Take) -> ?Iterator:Item {
+    if self.n != 0 {
+        self.n -= 1;
+        self.iter |> Iterator:next;
+    } else {
+        null
+    }
+}
+
+pub func take(self: Iterator, n: USize) -> Iterator {
+    Take { iter: self, n }
+}
+
+trait Default {
+    func default(Self) -> Self;
+}
+
+
+/// fib.sil
+use std:{ trait Default };
+use iter:{ trait Iterator };
+
+type Fib {
+    cur:  Int,
+    next: Int,
+}
+
+func new(n: Int) {
+    Fib:default()
+    |> iter:take n
+    |> iter:collect
+}
+
+func [Default] default() -> Fib {
+    Fib(0, 1)
+}
+
+func [iter:Iterator] next(self: Fib) -> ?Int {
+    (self.cur, self.next) = (self.next, self.cur + self.next);
+    self.cur
+}
+
+func main() {
+    std:Default:default(Fib)
+    |> iter:take 10
+    |> iter:collect
+    |> io:println;
+}

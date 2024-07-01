@@ -4,20 +4,25 @@
 #include "ast.h"
 #include "dynarr.h"
 #include "error_msg.h"
-#include "span.h"
+#include "namespace.h"
 #include "token.h"
 
+
 typedef struct Module {
-    FirSym           filepath;
-    FirSym           src;
+    FirString           filepath;
+    FirString           src;
+
     DynArr(Token)    tokens;
+
+    DynArr(AstItem*) uses;
     DynArr(AstItem*) ast;
+
+    Namespace        ns;
 
     DynArr(ErrorMsg) errors;
 } Module;
 
-Module *module_init(FirSym src);
+Module *module_init(FirString src);
 void tok_debug(Module *module);
-void ast_debug(Module *module);
 
 #endif

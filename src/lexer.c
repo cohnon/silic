@@ -19,11 +19,11 @@
 #define DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 
 typedef struct LexerCtx {
-    Module      *module;
-    FirSym       src;
-    size_t       src_idx;
-    Token       *current_token;
-    TextPos pos;
+    Module   *module;
+    FirString src;
+    size_t    src_idx;
+    Token    *current_token;
+    TextPos   pos;
 } LexerCtx;
 
 static char cur_char(LexerCtx *ctx) {
@@ -60,7 +60,7 @@ const SymTokPair sym_tok_map[] = {
     { "unreachable", Token_Unreachable },
     { "as",          Token_As          },
     { "func",        Token_Func        },
-    { "ret",         Token_Ret         },
+    { "return",      Token_Return      },
     { "pub",         Token_Pub         },
 };
 
@@ -204,8 +204,6 @@ static void lex_dash(LexerCtx *ctx) {
 static void lex_comment(LexerCtx *ctx) {
     assert(cur_char(ctx) == '/' || cur_char(ctx) == '*');
 
-    ctx->current_token->kind = Token_String;
-
     if (cur_char(ctx) == '/') {
         while (cur_char(ctx) != '\n') {
             inc(ctx);
@@ -239,14 +237,14 @@ static void lex_comment(LexerCtx *ctx) {
 static void lex_slash(LexerCtx *ctx) {
     assert(cur_char(ctx) == '/');
 
-    begin_token(ctx, Token_Slash);
-
     inc(ctx);
 
     if (cur_char(ctx) == '/' || cur_char(ctx) == '*') {
         lex_comment(ctx);
         return;
     }
+
+    begin_token(ctx, Token_Slash);
 
     end_token(ctx);
 }
@@ -299,16 +297,9 @@ bool lex_module(Module *module) {
             begin_token(&ctx, Token_Invalid);
             inc(&ctx);
             end_token(&ctx);
-            /**
-            errors_new(
-                &ctx.module->errors,
-                ctx.module->path,
-                ctx.current_token->position,
-                ctx.current_token->span,
-                "unexpected character '%c'",
-                unknown_char
-            );
-            **/
+            
+            ErrorMsgId error = error_add(ctx.module, ctx.current_token, "syntax error");
+            error_hint(ctx.module, error, "unexpected character");
             return false;
         }
 

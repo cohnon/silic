@@ -1,44 +1,86 @@
 
 /// double.sil
-trait Double
-| func double(self: Self) -> Self
-| func type_size() -> USize
-| func double_twice(self: T) -> Self {
+// combined
+pub trait Double = (
+    type Item
+
+    func double(self: Self) -> Self
+    func type_size() -> USize!
+
+    func double_twice(self: T) -> Self
+)
+
+func [Double] double_twice(self: Any') -> Any' {
     self
-    |> double()
-    |> double()
+    |> double
+    |> double
 }
 
+// separated
+pub trait Double = (
+    func double(
+)
+
+func [Double] double(self: Self) -> Self;
+func [Double] type_size(Self) -> USize;
+func [Double] double_twice(self: Self) -> Self {
+    self
+    |> double
+    |> double
+}
+
+pub import internal/thing:(fun_1, trait Double)
+pub import internal/thing:(
+    fun_1,
+    trait Double,
+    fun_2,
+)
+import internal/thing_2
+
+~0x01 | mask
+not 0x01 or mask
 
 /// array.sil
-pub type Array(T')
-| slc: []T'
-| len: USize
+pub type Array T = (
+    slc: []T,
+    len: USize,
+)
 
-pub func new(init_cap: USize) -> Array(T') error Allocator:Error {
-    let slc = try os:alloc(T', init_cap);
+pub type NewError =
+    | OutOfMemory(Int)
+    | OtherError
 
+pub func new(init_cap: USize) -> Array(T') ! NewError {
+    let slc = try os:alloc(T', init_cap) else(err) {
+        
+    }
+
+    lib:THING.two
+
+    error NewError:OutOfMemory(100);
+    
     Array(slc, len=0)
 }
 
 pub func push(arr: Array(T'), item: T') error Allocator:Error { .. }
 
-impl Double for Array(T')
-| func double(self: Self) -> Self {
-    self.len *= 2;
+type [Double for Array(T')] Item = USize;
 
+func [Double] double(self: Array(T')) -> Array(T') {
+    self.len *= 2;
     self
 }
-| func type_size() -> USize {
-    @typeinfo(Self).size
-}
 
-impl Display for Array(T')
-| func fmt(self: Self) { "NOTHING" }
+func [Double] type_size(Array(T')) -> USize {
+    Array(T').type_info.size
+}
 
 
 /// main.sil
+use custom/double:(trait Double);
+
 pub func add(a: T', b: T') -> T' errors Sum:Error {
+    let size = Double:type_size(T');
     let a' = Double:double(a);
     a' + b
 }
@@ -46,16 +88,17 @@ pub func add(a: T', b: T') -> T' errors Sum:Error {
 
 pub func main() {
     let arr: Array(Int) = array:new(Int, 10);
-
     try array:push(arr, 20);
 
-    let a = match val
-        on 1 -> 2
-        on 2 -> 3
-        on _ -> 4;
+    let arr' = array:iter(arr)
+        |> iter:filter | a' > 10
+        |> iter:map | a' * 2
+        |> iter:collect;
 
-    let total = iter:from(arr)
-        |> iter:filter \ a' > 10
-        |> iter:map \ a' * 2
-        |> iter:sum
+    hi = hi .or 1;
+
+    match val
+    | 1 -> 2
+    | 2 -> 3
+    | _ -> 4
 }
