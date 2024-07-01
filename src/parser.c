@@ -60,7 +60,12 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
 
         }
 
-        ErrorMsgId error = error_add(ctx->module, expected_tok, "syntax error");
+        ErrorMsgId error = error_add(
+            ctx->module,
+            ErrorMsg_SyntaxError,
+            expected_tok->span,
+            expected_tok->pos
+        );
         error_hint(ctx->module, error, "expected %s here", tok_cstr(kind));
 
         return NULL;
@@ -199,7 +204,8 @@ static AstExpr *parse_expr_primary(ParserCtx *ctx) {
     case Token_LBrace: expr = try (parse_block(ctx)); break;
     case Token_LParen: expr = try (parse_grouped_expr(ctx)); break;
     default: {
-        ErrorMsgId err = error_add(ctx->module, cur_tok(ctx), "syntax error");
+        Token *tok = cur_tok(ctx);
+        ErrorMsgId err = error_add(ctx->module, ErrorMsg_SyntaxError, tok->span, tok->pos);
         error_hint(ctx->module, err, "expected expression");
         break;
     }
@@ -360,7 +366,8 @@ static AstItem *parse_item(ParserCtx *ctx) {
     case Token_Use: return parse_use(ctx, item);
     case Token_Func: return parse_func(ctx, item);
     default: {
-        error_add(ctx->module, cur_tok(ctx), "syntax error");
+        Token *tok = cur_tok(ctx);
+        error_add(ctx->module, ErrorMsg_SyntaxError, tok->span, tok->pos);
         return NULL;
     };
     }

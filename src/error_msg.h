@@ -10,20 +10,22 @@ typedef enum ErrorMsgSeverity {
     ErrorMsgSeverity_Warning,
 } ErrorMsgSeverity;
 
+typedef enum ErrorMsgKind {
+    ErrorMsg_SyntaxError,
+} ErrorMsgKind;
+
 typedef struct ErrorMsg {
     ErrorMsgSeverity severity;
-    FirString           msg;
-    FirString           hint;
+    FirString        msg;
+    FirString        hint;
 
-    FirString           span;
-
-    size_t           line;
-    size_t           col;
+    FirString        span;
+    TextPos          pos;
 } ErrorMsg;
 
+
 typedef struct Module Module;
-__attribute__((format(printf, 3, 4)))
-ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...);
+ErrorMsgId error_add(Module *module, ErrorMsgKind kind, FirString span, TextPos pos);
 
 __attribute__((format(printf, 3, 4)))
 void error_hint(Module *module, ErrorMsgId id, char *msg, ...);

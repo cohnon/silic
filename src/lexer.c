@@ -298,7 +298,8 @@ bool lex_module(Module *module) {
             inc(&ctx);
             end_token(&ctx);
             
-            ErrorMsgId error = error_add(ctx.module, ctx.current_token, "syntax error");
+            Token *tok = ctx.current_token;
+            ErrorMsgId error = error_add(ctx.module, ErrorMsg_SyntaxError, tok->span, tok->pos);
             error_hint(ctx.module, error, "unexpected character");
             return false;
         }

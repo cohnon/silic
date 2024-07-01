@@ -8,23 +8,17 @@
 #include <string.h>
 
 
-ErrorMsgId error_add(Module *module, Token *tok, char *msg, ...) {
-    size_t max_len = strlen(msg) + 256;
-    char *formatted_msg = os_alloc(char, 256);
-
-    va_list args;
-    va_start(args, msg);
-    vsnprintf(formatted_msg, max_len, msg, args);
-    va_end(args);
-
-    FirString msg_span = fir_string_slc(formatted_msg, strlen(formatted_msg));
+ErrorMsgId error_add(Module *module, ErrorMsgKind kind, FirString span, TextPos pos) {
+    FirString msg;
+    switch (kind) {
+    case ErrorMsg_SyntaxError: msg = fir_string_lit("syntax error"); break;
+    }
 
     ErrorMsg error_msg = (ErrorMsg) {
-        .msg       = msg_span,
-        .span      = tok->span,
-        .col       = tok->pos.col,
-        .line      = tok->pos.line,
-        .severity  = ErrorMsgSeverity_Error,
+        .msg      = msg,
+        .span     = span,
+        .pos      = pos,
+        .severity = ErrorMsgSeverity_Error,
     };
 
     dynarr_push(&module->errors, &error_msg);
@@ -54,7 +48,7 @@ static void error_print_msg(FirString filepath, ErrorMsg *error) {
     //   │                           ^ missing semicolon
     
     int line_num_width = 0;
-    for (int i = error->line; i > 0; i /= 10) { line_num_width += 1; }
+    for (int i = error->pos.line; i > 0; i /= 10) { line_num_width += 1; }
 
     printf(ANSI_RED "error:" ANSI_RESET " %.*s\n" ANSI_RESET, fir_string_fmt(error->msg));
 
@@ -63,14 +57,14 @@ static void error_print_msg(FirString filepath, ErrorMsg *error) {
         ANSI_GREY " %.*s ╭─ " ANSI_RESET "%.*s:%zu:%zu\n",
         line_num_width, "     ",
         fir_string_fmt(filepath),
-        error->line,
-        error->col
+        error->pos.line,
+        error->pos.col
     );
 
     // print source
-    printf(ANSI_GREY " %zu │ " ANSI_RESET, error->line);
+    printf(ANSI_GREY " %zu │ " ANSI_RESET, error->pos.line);
 
-    char *src = (char*)error->span.ptr - (error->col- 1);
+    char *src = (char*)error->span.ptr - (error->pos.col- 1);
     while (*src != '\n' && *src != 0) {
         if (src == error->span.ptr) { printf(ANSI_RED); }
         putc(*src, stdout);
@@ -86,7 +80,7 @@ static void error_print_msg(FirString filepath, ErrorMsg *error) {
         line_num_width, "     "
     );
 
-    for (size_t i = 0; i < error->col- 1; i += 1) { putc(' ', stdout); }
+    for (size_t i = 0; i < error->pos.col- 1; i += 1) { putc(' ', stdout); }
     for (size_t i = 0; i < error->span.len; i += 1) { putc('^', stdout); }
     
     printf(" %.*s", fir_string_fmt(error->hint));
