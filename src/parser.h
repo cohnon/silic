@@ -4,6 +4,6 @@
 #include "module.h"
 
 
-bool parse_module(Module *module);
+bool parse_module(Compiler *compiler, Module *module);
 
 #endif

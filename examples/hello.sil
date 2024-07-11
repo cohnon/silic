@@ -2,28 +2,12 @@
 /// double.sil
 // combined
 pub trait Double = (
-    type Item
-
     func double(self: Self) -> Self
-    func type_size() -> USize!
 
     func double_twice(self: T) -> Self
 )
 
 func [Double] double_twice(self: Any') -> Any' {
-    self
-    |> double
-    |> double
-}
-
-// separated
-pub trait Double = (
-    func double(
-)
-
-func [Double] double(self: Self) -> Self;
-func [Double] type_size(Self) -> USize;
-func [Double] double_twice(self: Self) -> Self {
     self
     |> double
     |> double
@@ -40,39 +24,101 @@ import internal/thing_2
 ~0x01 | mask
 not 0x01 or mask
 
+pub type Something;
+pub type Something = (Int, Int);
+pub type Something = (x: Int, y: Int);
+
+pub type Option A' = Some(A') | None
+
+let num: Float = 0;
+
 /// array.sil
-pub type Array T = (
-    slc: []T,
+pub type Array T' = (
+    buf: ?[]T',
     len: USize,
+    mem: Memory,
 )
 
-pub type NewError =
-    | OutOfMemory(Int)
-    | OtherError
+pub type Vec2 = (
+    x: T',
+    y: T',
+)
+where T' is Number
+
+pub func new(T') -> Vec2[T'] {
+    Vec2(T', x=0, y=0)
+}
+
+pub func new(T', mem: Memory) -> Array[T']! {
+    with_capacity(T', mem, 8)
+}
+
+pub func with_capacity(T', mem: Memory, cap: USize) -> Array T'! {
+    assert cap > 0;
+
+    let item = map |> try map:get();
+
+    let buf = mem |> try os:alloc(T', cap);
+
+    Array (
+        buf,
+        len = 0,
+        mem,
+    )
+}
+
+let arr = Array:new(Uint8, test_allocator);
+arr |> append 10;
+
+pub type Token =
+    | Symbol(Int)
+    | Equals
+    | Semicolon
+    | KeywordType
+    | KeywordPub
 
 pub func new(init_cap: USize) -> Array(T') ! NewError {
     let slc = try os:alloc(T', init_cap) else(err) {
         
     }
 
-    lib:THING.two
+    lib:THING.two;
+
+    let thing = slc:x + slc:y;
+
+    let a: Float = 200;
+    let a' = a |> Number:clamp between 50 and 100;
+
+    let hi: glm.Vec2 = glm.Vec2.new();
+
+    Double:running()
 
     error NewError:OutOfMemory(100);
-    
+
     Array(slc, len=0)
 }
 
-pub func push(arr: Array(T'), item: T') error Allocator:Error { .. }
+use io
 
-type [Double for Array(T')] Item = USize;
+pub type Hello = Int
+
+pub let game: GameState = {
+    println("HI");
+    GameState(..)
+}
+
+pub const game: GameState = GameState(
+    name = "Name",
+    resolution = (640, 380),
+    on_start,
+    on_update,
+)
+
+pub func push(arr: Array(T'), item: T') error Allocator:Error { .. }
 
 func [Double] double(self: Array(T')) -> Array(T') {
     self.len *= 2;
     self
-}
-
-func [Double] type_size(Array(T')) -> USize {
-    Array(T').type_info.size
 }
 
 
@@ -80,14 +126,14 @@ func [Double] type_size(Array(T')) -> USize {
 use custom/double:(trait Double);
 
 pub func add(a: T', b: T') -> T' errors Sum:Error {
-    let size = Double:type_size(T');
     let a' = Double:double(a);
     a' + b
 }
 
-
 pub func main() {
-    let arr: Array(Int) = array:new(Int, 10);
+    use sil;
+
+    let arr: Array = array:new(Int, 10);
     try array:push(arr, 20);
 
     let arr' = array:iter(arr)
@@ -102,3 +148,33 @@ pub func main() {
     | 2 -> 3
     | _ -> 4
 }
+
+/// globals
+
+
+func inc(const counter: *mut Int32) {
+    @counter += 1;
+}
+
+func new(T', alc: Allocator) -> Array T' {
+    Array(T', alc, ..)
+}
+
+pub func main() {
+    static mut counter: Int32 = 0;
+    inc(const &counter);
+
+    // dynamic dispatch
+    let arr = array:new(dyn Speaker, mem:test_allocator);
+
+    let cat = Cat();
+
+    array:append(arr, dyn cat);
+}
+
+
+
+
+
+
+

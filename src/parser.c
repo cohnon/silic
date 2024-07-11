@@ -1,14 +1,16 @@
 #include "parser.h"
 
 #include "ast.h"
+#include "error_msg.h"
 #include "os.h"
 #include "try.h"
 #include <assert.h>
 
 
 typedef struct ParserCtx {
-    Module *module;
-    size_t tok_idx;
+    Compiler *compiler;
+    Module   *module;
+    size_t    tok_idx;
 } ParserCtx;
 
 static Token *cur_tok(ParserCtx *ctx) {
@@ -61,12 +63,13 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
         }
 
         ErrorMsgId error = error_add(
-            ctx->module,
+            ctx->compiler,
             ErrorMsg_SyntaxError,
+            ctx->module->file_path,
             expected_tok->span,
             expected_tok->pos
         );
-        error_hint(ctx->module, error, "expected %s here", tok_cstr(kind));
+        error_hint(ctx->compiler, error, "expected %s here", tok_cstr(kind));
 
         return NULL;
     }
@@ -205,8 +208,14 @@ static AstExpr *parse_expr_primary(ParserCtx *ctx) {
     case Token_LParen: expr = try (parse_grouped_expr(ctx)); break;
     default: {
         Token *tok = cur_tok(ctx);
-        ErrorMsgId err = error_add(ctx->module, ErrorMsg_SyntaxError, tok->span, tok->pos);
-        error_hint(ctx->module, err, "expected expression");
+        ErrorMsgId err = error_add(
+            ctx->compiler,
+            ErrorMsg_SyntaxError,
+            ctx->module->file_path,
+            tok->span,
+            tok->pos
+        );
+        error_hint(ctx->compiler, err, "expected expression");
         break;
     }
     }
@@ -284,7 +293,9 @@ static AstItem *parse_use(ParserCtx *ctx, AstItem *item) {
     item->kind = AstItem_Use;
     dynarr_init(&item->use.mod_path, 4);
 
-    try (expect_tok(ctx, Token_Use));
+    Token *use_tok = try (expect_tok(ctx, Token_Use));
+    item->name = use_tok->span;
+    item->pos = use_tok->pos;
 
     while (true) {
         Token *submod_tok = try (expect_tok(ctx, Token_Symbol));
@@ -298,7 +309,7 @@ static AstItem *parse_use(ParserCtx *ctx, AstItem *item) {
 
     // unqualified items
     if (eat_tok_if(ctx, Token_Colon)) {
-        try (expect_tok(ctx, Token_LBrace));
+        try (expect_tok(ctx, Token_LParen));
 
         while (!cur_tok_is(ctx, Token_RBrace)) {
             try (expect_tok(ctx, Token_Symbol));
@@ -308,7 +319,7 @@ static AstItem *parse_use(ParserCtx *ctx, AstItem *item) {
             }
         }
 
-        try (expect_tok(ctx, Token_RBrace));
+        try (expect_tok(ctx, Token_RParen));
     }
 
     return item;
@@ -322,6 +333,7 @@ static AstItem *parse_func(ParserCtx *ctx, AstItem *item) {
 
     Token *func_name_tok = try (expect_tok(ctx, Token_Symbol));
     item->name = func_name_tok->span;
+    item->pos = func_name_tok->pos;
 
     try (expect_tok(ctx, Token_LParen));
 
@@ -367,24 +379,30 @@ static AstItem *parse_item(ParserCtx *ctx) {
     case Token_Func: return parse_func(ctx, item);
     default: {
         Token *tok = cur_tok(ctx);
-        error_add(ctx->module, ErrorMsg_SyntaxError, tok->span, tok->pos);
+        error_add(
+            ctx->compiler,
+            ErrorMsg_SyntaxError,
+            ctx->module->file_path,
+            tok->span,
+            tok->pos
+        );
         return NULL;
     };
     }
 }
 
-bool parse_module(Module *module) {
+bool parse_module(Compiler *compiler, Module *module) {
     ParserCtx ctx;
+    ctx.compiler = compiler;
     ctx.module = module;
     ctx.tok_idx = 0;
 
     while (!cur_tok_is(&ctx, Token_Eof)) {
         AstItem *item = try (parse_item(&ctx));
+        dynarr_push(&ctx.module->ast, &item);
 
         if (item->kind == AstItem_Use) {
             dynarr_push(&ctx.module->uses, &item);
-        } else {
-            dynarr_push(&ctx.module->ast, &item);
         }
     }
 

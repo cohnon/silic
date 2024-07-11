@@ -1,83 +1,65 @@
-pub trait Iterator {
-    type Item;
+/// iterator.sil
+pub trait Iterator = (
+    func next(Self) -> ?Item',
+    func size_hint(Self) -> (USize, USize),
+)
 
-    func next(self: Self) -> Item;
+func [Iterator] size_hint(self: Any') -> (USize, ?USize) { (0, null) }
 
-    func size_hint(self: Self) -> (USize, ?USize);
-    // ..other functions
+pub func filter(self: Iterator[Item'], predicate: func(Item') -> Bool) -> Filter[Item'] {
+    Filter(iter=self, pred=predicate)
 }
 
-func [Iterator] size_hint(self: Any) -> (USize, ?USize) { (0, null) }
-
-
-type Filter {
-    iter: Iterator,
-    predicate: func(Iterator:Item) -> Bool,
+pub func take(self: Iterator[Item'], n: USize) -> Take[Item'] {
+    Take(iter=self, n)
 }
 
-func [Iterator] next(self: Filter) -> Iterator:Item {
+/// iterator/filter.sil
+use iterator as iter
+
+type Filter = (
+    iter: Iterator[Item'],
+    pred: func(Iterator:Item) -> Bool,
+)
+
+func [Iterator] next(self: Filter[Item']) -> ?Item' {
     iter:find(self.iter, self.predicate);
 }
 
-pub func filter(
-    self: Iterator,
-    predicate: func(Iterator:Item) -> Bool
-) -> Iterator {
-    Filter {
-        iter: self,
-        predicate,
-    }
-}
+/// iterator/take.sil
+use iterator as iter
 
-type Take {
-    iter: Iterator,
+type Take Item' = (
+    iter: Iterator[Item'],
     n: ISize,
-}
+)
 
-func [Iterator] next(self: Take) -> ?Iterator:Item {
-    if self.n != 0 {
+@inline
+func [Iterator] next(self: Take[Item']) -> ?Item' {
+    match self.n
+    | 0 -> null
+    | _ -> {
         self.n -= 1;
-        self.iter |> Iterator:next;
-    } else {
-        null
+        self.iter |> Iterator:next
     }
 }
-
-pub func take(self: Iterator, n: USize) -> Iterator {
-    Take { iter: self, n }
-}
-
-trait Default {
-    func default(Self) -> Self;
-}
-
 
 /// fib.sil
-use std:{ trait Default };
-use iter:{ trait Iterator };
+use silic/io
+use iterator as iter ( trait Iterator )
 
-type Fib {
-    cur:  Int,
-    next: Int,
-}
+type Fib (
+    cur:  Int = 0,
+    next: Int = 1,
+)
 
-func new(n: Int) {
-    Fib:default()
-    |> iter:take n
-    |> iter:collect
-}
-
-func [Default] default() -> Fib {
-    Fib(0, 1)
-}
-
-func [iter:Iterator] next(self: Fib) -> ?Int {
+func [Iterator] next(self: Fib) -> ?Int {
     (self.cur, self.next) = (self.next, self.cur + self.next);
     self.cur
 }
 
 func main() {
-    std:Default:default(Fib)
+    Fib(..)
     |> iter:take 10
     |> iter:collect
     |> io:println;

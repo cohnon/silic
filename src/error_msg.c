@@ -1,32 +1,36 @@
 #include "error_msg.h"
 
 #include "dynarr.h"
-#include "module.h"
+#include "compiler.h"
 #include "os.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 
-ErrorMsgId error_add(Module *module, ErrorMsgKind kind, FirString span, TextPos pos) {
+ErrorMsgId error_add(Compiler *compiler, ErrorMsgKind kind, FirString file_path, FirString span, TextPos pos) {
     FirString msg;
     switch (kind) {
     case ErrorMsg_SyntaxError: msg = fir_string_lit("syntax error"); break;
+    case ErrorMsg_NameConflict: msg = fir_string_lit("name conflict"); break;
     }
 
     ErrorMsg error_msg = (ErrorMsg) {
-        .msg      = msg,
-        .span     = span,
-        .pos      = pos,
-        .severity = ErrorMsgSeverity_Error,
+        .severity  = ErrorMsgSeverity_Error,
+        .msg       = msg,
+
+        .file_path = file_path,
+
+        .span      = span,
+        .pos       = pos,
     };
 
-    dynarr_push(&module->errors, &error_msg);
+    dynarr_push(&compiler->errors, &error_msg);
 
-    return module->errors.len - 1;
+    return compiler->errors.len - 1;
 }
 
-void error_hint(Module *module, ErrorMsgId id, char *msg, ...) {
+void error_hint(Compiler *compiler, ErrorMsgId id, char *msg, ...) {
     size_t max_len = strlen(msg) + 256;
     char *formatted_msg = os_alloc(char, 256);
 
@@ -37,7 +41,7 @@ void error_hint(Module *module, ErrorMsgId id, char *msg, ...) {
 
     FirString hint = fir_string_slc(formatted_msg, strlen(formatted_msg));
 
-    ErrorMsg *error = dynarr_get_ref(&module->errors, id);
+    ErrorMsg *error = dynarr_get_ref(&compiler->errors, id);
     error->hint = hint;
 }
 
@@ -89,9 +93,9 @@ static void error_print_msg(FirString filepath, ErrorMsg *error) {
     printf("\n\n" ANSI_RESET);
 }
 
-void error_print(Module *module) {
-    dynarr_foreach(module->errors, i) {
-        ErrorMsg *error = dynarr_get_ref(&module->errors, i);
-        error_print_msg(module->filepath, error);
+void error_print(Compiler *compiler) {
+    dynarr_foreach(compiler->errors, i) {
+        ErrorMsg *error = dynarr_get_ref(&compiler->errors, i);
+        error_print_msg(error->file_path, error);
     }
 }

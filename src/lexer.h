@@ -5,6 +5,6 @@
 #include <stdbool.h>
 
 
-bool lex_module(Module *module);
+bool lex_module(Compiler *compiler, Module *module);
 
 #endif

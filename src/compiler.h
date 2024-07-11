@@ -2,17 +2,24 @@
 #define COMPILER_H
 
 #include "module.h"
+#include "error_msg.h"
 #include "namespace.h"
 #include <fir.h>
 
 
 typedef struct Compiler {
-    DynArr(Module*) modules;
-    Namespace ns;
 
+    // lookup paths for imports
     FirString main_dir_path;
     FirString std_dir_path;
     FirString lib_dir_path;
+
+    // all the modules in this compilation
+    // keeps track of the current module being processed
+    DynArr(Module*) modules;
+    Module         *cur_module;
+
+    DynArr(ErrorMsg) errors;
 
     FirModule *fir;
 } Compiler;

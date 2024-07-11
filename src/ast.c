@@ -49,7 +49,6 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
             AstExpr *arg = dynarr_get(&expr->func_call.args, i);
             ast_debug_expr(arg, indent_lvl + 1);
         }
-        printf(")\n");
         break;
     }
     case AstExpr_Block: {
@@ -120,24 +119,23 @@ static void ast_debug_func(AstItem *item) {
 }
 
 static void ast_debug_item(AstItem *item) {
-    printf(ANSI_BLUE "\nItem\n" ANSI_RESET);
-
     switch (item->kind) {
-    case AstItem_Use: __builtin_unreachable();
+    case AstItem_Use: break; // we printed all uses before other items
     case AstItem_Func: ast_debug_func(item); break;
     }
 }
 
 void ast_debug(Module *module) {
-    printf(ANSI_BLUE "\n@@ File @@\n" ANSI_RESET "%.*s\n", fir_string_fmt(module->filepath));
+    printf(ANSI_BLUE "\n@@ File @@\n" ANSI_RESET "%.*s\n", fir_string_fmt(module->file_path));
 
     if (module->uses.len > 0) {
-        printf(ANSI_BLUE "\nImports\n" ANSI_RESET);
+        printf(ANSI_BLUE "Imports\n" ANSI_RESET);
         dynarr_foreach(module->uses, i) {
             ast_debug_use(dynarr_get(&module->uses, i));
         }
     }
 
+    printf(ANSI_BLUE "Items\n" ANSI_RESET);
     dynarr_foreach(module->ast, i) {
         ast_debug_item(dynarr_get(&module->ast, i));
     }

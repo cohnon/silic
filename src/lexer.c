@@ -1,5 +1,6 @@
 #include "lexer.h"
 
+#include "error_msg.h"
 #include "token.h"
 #include <assert.h>
 
@@ -19,6 +20,7 @@
 #define DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 
 typedef struct LexerCtx {
+    Compiler *compiler;
     Module   *module;
     FirString src;
     size_t    src_idx;
@@ -249,8 +251,9 @@ static void lex_slash(LexerCtx *ctx) {
     end_token(ctx);
 }
 #include <stdio.h>
-bool lex_module(Module *module) {
+bool lex_module(Compiler *compiler, Module *module) {
     LexerCtx ctx;
+    ctx.compiler = compiler;
     ctx.module = module;
     ctx.src = module->src;
     ctx.src_idx = 0;
@@ -299,8 +302,14 @@ bool lex_module(Module *module) {
             end_token(&ctx);
             
             Token *tok = ctx.current_token;
-            ErrorMsgId error = error_add(ctx.module, ErrorMsg_SyntaxError, tok->span, tok->pos);
-            error_hint(ctx.module, error, "unexpected character");
+            ErrorMsgId error = error_add(
+                ctx.compiler,
+                ErrorMsg_SyntaxError, 
+                ctx.module->file_path,
+                tok->span,
+                tok->pos
+            );
+            error_hint(ctx.compiler, error, "unexpected character");
             return false;
         }
 

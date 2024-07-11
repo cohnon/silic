@@ -4,14 +4,14 @@
 #include <stdio.h>
 
 
-Module *module_init(FirString filepath) {
+Module *module_init(FirString file_path) {
     Module *module = os_alloc_T(Module);
 
-    module->filepath = filepath;
+    module->file_path = file_path;
 
-    OsReadFileResult read_file_result = os_read_file(filepath);
+    OsReadFileResult read_file_result = os_read_file(file_path);
     if (!read_file_result.ok) {
-        printf("couldn't find %.*s\n", fir_string_fmt(filepath));
+        printf("couldn't find %.*s\n", fir_string_fmt(file_path));
         return NULL;
     }
 
@@ -21,7 +21,6 @@ Module *module_init(FirString filepath) {
 
     dynarr_init(&module->tokens, 32);
     dynarr_init(&module->ast, 16);
-    dynarr_init(&module->errors, 5);
 
 
     return module;

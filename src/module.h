@@ -3,13 +3,12 @@
 
 #include "ast.h"
 #include "dynarr.h"
-#include "error_msg.h"
 #include "namespace.h"
 #include "token.h"
 
 
 typedef struct Module {
-    FirString           filepath;
+    FirString           file_path;
     FirString           src;
 
     DynArr(Token)    tokens;
@@ -18,11 +17,9 @@ typedef struct Module {
     DynArr(AstItem*) ast;
 
     Namespace        ns;
-
-    DynArr(ErrorMsg) errors;
 } Module;
 
-Module *module_init(FirString src);
+Module *module_init(FirString file_path);
 void tok_debug(Module *module);
 
 #endif

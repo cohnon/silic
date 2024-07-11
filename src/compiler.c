@@ -1,6 +1,7 @@
 #include "compiler.h"
 
 #include "lexer.h"
+#include "nameres.h"
 #include "os.h"
 #include "parser.h"
 #include "try.h"
@@ -11,8 +12,11 @@
 Compiler *compiler_init(void) {
     Compiler *compiler = os_alloc_T(Compiler);
 
-    ns_init(&compiler->ns, NULL);
+    ns_init(&compiler->global_ns, NULL);
+    compiler->cur_ns = &compiler->global_ns;
+
     dynarr_init(&compiler->modules, 4);
+    dynarr_init(&compiler->errors, 4);
 
     return compiler;
 }
@@ -20,13 +24,15 @@ Compiler *compiler_init(void) {
 static Module *add_module(Compiler *compiler, FirString file_path) {
     Module *module = try (module_init(file_path));
 
-    try_else (lex_module(module), error_print(module));
+    try_else (lex_module(compiler, module), error_print(compiler));
 
     // tok_debug(module);
 
-    try_else (parse_module(module), error_print(module));
+    try_else (parse_module(compiler, module), error_print(compiler));
 
     ast_debug(module);
+
+    dynarr_push(&compiler->modules, &module);
 
     dynarr_foreach(module->uses, i) {
         AstItem *item = dynarr_get(&module->uses, i);
@@ -57,6 +63,8 @@ bool compiler_compile(Compiler *compiler, FirString main_path) {
     compiler->main_dir_path.len -= file_name_len;
 
     try (add_module(compiler, main_path));
+
+    try_else (resolve_names(compiler), error_print(compiler));
 
     return true;
 }

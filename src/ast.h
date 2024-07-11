@@ -2,6 +2,7 @@
 #define AST_H
 
 #include "dynarr.h"
+#include "token.h"
 #include <fir.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -167,7 +168,8 @@ typedef struct AstItem {
     AstItemKind kind;
     bool        public;
 
-    FirString      name;
+    FirString   name;
+    TextPos     pos;
 
     union {
         AstFunc func;

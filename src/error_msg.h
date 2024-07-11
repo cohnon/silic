@@ -12,6 +12,7 @@ typedef enum ErrorMsgSeverity {
 
 typedef enum ErrorMsgKind {
     ErrorMsg_SyntaxError,
+    ErrorMsg_NameConflict,
 } ErrorMsgKind;
 
 typedef struct ErrorMsg {
@@ -19,17 +20,19 @@ typedef struct ErrorMsg {
     FirString        msg;
     FirString        hint;
 
+    FirString        file_path;
+
     FirString        span;
     TextPos          pos;
 } ErrorMsg;
 
 
-typedef struct Module Module;
-ErrorMsgId error_add(Module *module, ErrorMsgKind kind, FirString span, TextPos pos);
+typedef struct Compiler Compiler;
+ErrorMsgId error_add(Compiler *compiler, ErrorMsgKind kind, FirString file_path, FirString span, TextPos pos);
 
 __attribute__((format(printf, 3, 4)))
-void error_hint(Module *module, ErrorMsgId id, char *msg, ...);
+void error_hint(Compiler *compiler, ErrorMsgId id, char *msg, ...);
 
-void error_print(Module *module);
+void error_print(Compiler *compiler);
 
 #endif
