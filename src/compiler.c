@@ -12,8 +12,8 @@
 Compiler *compiler_init(void) {
     Compiler *compiler = os_alloc_T(Compiler);
 
-    ns_init(&compiler->global_ns, NULL);
-    compiler->cur_ns = &compiler->global_ns;
+    //ns_init(&compiler->global_ns, NULL);
+    //compiler->cur_ns = &compiler->global_ns;
 
     dynarr_init(&compiler->modules, 4);
     dynarr_init(&compiler->errors, 4);
