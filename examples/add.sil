@@ -1,4 +1,5 @@
 pub func add(a: Int, b: Int) -> Int {
-    a + b
+    a + b:c
 }
 
+pub func add() {}

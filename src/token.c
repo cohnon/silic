@@ -48,7 +48,8 @@ char *tok_cstr(TokenKind kind) {
     case Token_Star: return "*";
     case Token_Slash: return "/";
     case Token_Percent: return "%";
-
+    
+    case Token_Let: return "let";
     case Token_Use: return "use";
     case Token_Unreachable: return "unreachable";
     case Token_As: return "as";

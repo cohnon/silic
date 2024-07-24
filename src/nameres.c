@@ -1,6 +1,7 @@
 #include "nameres.h"
 
 #include "try.h"
+#include <fir/map.h>
 
 
 typedef struct NameresCtx {
@@ -9,39 +10,51 @@ typedef struct NameresCtx {
     Namespace *cur_ns;
 } NameresCtx;
 
+
+// namespace
+static void ns_init(Namespace *ns, Namespace *parent) {
+    ns->parent = parent;
+    map_init(&ns->symbols, 8);
+}
+
+static void ns_deinit(Namespace *ns) {
+    map_deinit(&ns->symbols);
+}
+
+static AstDef *ns_get(Namespace *ns, String name) {
+    Namespace *cur = ns;
+    while (cur != NULL) {
+        AstDef *entry = map_get_ref(&ns->symbols, name);
+
+        if (entry != NULL) { return entry; }
+
+        cur = cur->parent;
+    }
+
+    return NULL;
+}
+
+static AstDef *ns_insert_func(Namespace *ns, AstItem *item) {
+    AstDef entry = {
+        AstDef_Func,
+        { .item=item },
+    };
+
+    return map_insert(&ns->symbols, item->name, &entry);
+}
+
+/*
 static void enter_scope(NameresCtx *ctx, Namespace *ns) {
     ns_init(ns, ctx->cur_ns);
     ctx->cur_ns = ns;
 }
 
 static void exit_scope(NameresCtx *ctx) {
-    ctx->cur_ns = ctx->cur_ns->parent;
+    Namespace *ns = ctx->cur_ns;
+    ctx->cur_ns = ns->parent;
+    ns_deinit(ns);
 }
-
-static bool resolve_use(NameresCtx *ctx, AstItem *item) {
-    return true;
-}
-
-static bool resolve_func(NameresCtx *ctx, AstItem *item) {
-    return true;
-}
-
-static bool resolve_item(NameresCtx *ctx, AstItem *item) {
-    switch (item->kind) {
-    case AstItem_Use: return resolve_use(ctx, item);
-    case AstItem_Func: return resolve_func(ctx, item);
-    default: return true;
-    }
-}
-
-static bool resolve_module(NameresCtx *ctx, Module *module) {
-    dynarr_foreach(module->ast, i) {
-        AstItem *item = dynarr_get(&module->ast, i);
-        try (resolve_item(ctx, item));
-    }
-
-    return true;
-}
+*/
 
 static bool scan_module(NameresCtx *ctx, Module *module) {
     dynarr_foreach(module->ast, i) {
@@ -52,8 +65,8 @@ static bool scan_module(NameresCtx *ctx, Module *module) {
             continue;
         }
 
-        NsEntry *existing = ns_add_item(ctx->compiler, item);
-        if (true) {
+        AstDef *existing = ns_insert_func(ctx->cur_ns, item);
+        if (existing != NULL) {
             error_add(
                 ctx->compiler,
                 ErrorMsg_NameConflict,
@@ -80,8 +93,8 @@ bool resolve_names(Compiler *compiler) {
     }
 
     dynarr_foreach(compiler->modules, i) {
-        Module *module = dynarr_get(&compiler->modules, i);
-        try (resolve_module(&ctx, module));
+        //Module *module = dynarr_get(&compiler->modules, i);
+        //try (resolve_module(&ctx, module));
     }
 
     return true;

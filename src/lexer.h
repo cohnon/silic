@@ -1,7 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "module.h"
+#include "compiler.h"
 #include <stdbool.h>
 
 

@@ -1,5 +1,5 @@
 #include "compiler.h"
-#include <fir.h>
+#include <fir/fir.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    FirString entry_path = fir_string_slc(argv[1], strlen(argv[1]));
+    String entry_path = string_slc(argv[1], strlen(argv[1]));
 
     Compiler *compiler = compiler_init();
 

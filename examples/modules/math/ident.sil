@@ -1,0 +1,1 @@
+func identity(a: Int) -> Int { a }

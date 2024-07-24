@@ -1,0 +1,2 @@
+// completely random number at the time of writing
+func random() -> Int { 4 }

@@ -2,8 +2,9 @@
 
 #include "ast.h"
 #include "error_msg.h"
-#include "os.h"
 #include "try.h"
+#include <fir/dynarr.h>
+#include <fir/os.h>
 #include <assert.h>
 
 
@@ -78,7 +79,6 @@ static Token *expect_tok(ParserCtx *ctx, TokenKind kind) {
 }
 
 static AstExpr *parse_expr(ParserCtx *ctx);
-static AstStmt *parse_stmt(ParserCtx *ctx);
 
 static AstType *parse_type(ParserCtx *ctx) {
     AstType *type = os_alloc_T(AstType);
@@ -109,19 +109,23 @@ static AstExpr *parse_number(ParserCtx *ctx) {
     return expr;
 }
 
-static AstExpr *parse_item_path(ParserCtx *ctx) {
+static AstExpr *parse_symbol(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
-    expr->kind = AstExpr_ItemPath;
-    dynarr_init(&expr->item_path.parts, 2);
+    expr->kind = AstExpr_NamedUse;
 
-    while (true) {
-        Token *sym_tok = try (expect_tok(ctx, Token_Symbol));
-        dynarr_push(&expr->item_path.parts, (&(sym_tok->span)));
-        
-        if (!eat_tok_if(ctx, Token_Colon)) {
-            break;
-        }
+    Token *sym1_tok = try (expect_tok(ctx, Token_Symbol));
+    expr->named_use.parts[0] = sym1_tok->span;
+
+    // if the name isn't qualified
+    if (!eat_tok_if(ctx, Token_Colon)) {
+        expr->named_use.qualified = false;
+        return expr;
     }
+
+    Token *sym2_tok = try (expect_tok(ctx, Token_Symbol));
+
+    expr->named_use.qualified = true;
+    expr->named_use.parts[1] = sym2_tok->span;
 
     return expr;
 }
@@ -130,18 +134,20 @@ static AstExpr *parse_block(ParserCtx *ctx) {
     AstExpr *expr = os_alloc_T(AstExpr);
     expr->kind = AstExpr_Block;
     dynarr_init(&expr->block.stmts, 8);
+    expr->block.is_terminated = false;
 
     expect_tok(ctx, Token_LBrace);
 
     while (!cur_tok_is(ctx, Token_RBrace)) {
-        AstStmt *stmt = try (parse_stmt(ctx));
-        dynarr_push(&expr->block.stmts, &stmt);
+        AstExpr *stmt_expr = try (parse_expr(ctx));
+        dynarr_push(&expr->block.stmts, &stmt_expr);
 
-        // only the last statement of a block will have no semicolon
-        // (unless it's a kind of control flow)
-        if (stmt->kind == AstStmt_Expr
-        && !stmt->expr.has_semicolon
-        && !ast_has_implicit_semicolon(stmt->expr.val)) {
+        // once we stop seeing semicolons (and the previous expression had no
+        // implicit semicolon), we break out of the loop.
+        if (!eat_tok_if(ctx, Token_Semicolon) && !ast_has_implicit_semicolon(stmt_expr)) {
+            // this block has no terminating semicolon
+            // (and will evaluate to the last expression)
+            expr->block.is_terminated = true;
             break;
         }
     }
@@ -157,11 +163,23 @@ static AstExpr *parse_block(ParserCtx *ctx) {
     return expr;
 }
 
-static AstExpr *parse_grouped_expr(ParserCtx *ctx) {
-    try (expect_tok(ctx, Token_LParen));
+static AstExpr *parse_var_def(ParserCtx *ctx) {
+    AstExpr *expr = os_alloc_T(AstExpr);
+    expr->kind = AstExpr_VarDef;
 
-    AstExpr *expr = try (parse_expr(ctx));
-    try (expect_tok(ctx, Token_RParen));
+    try (expect_tok(ctx, Token_Let));
+    expr->var_def.kind = AstVarDef_Let;
+
+    Token *name_tok = try (expect_tok(ctx, Token_Symbol));
+    expr->var_def.name = name_tok->span;
+
+    try (expect_tok(ctx, Token_Colon));
+
+    expr->var_def.type = try (parse_type(ctx));
+
+    try (expect_tok(ctx, Token_Equals));
+
+    expr->var_def.val = try (parse_expr(ctx));
 
     return expr;
 }
@@ -176,7 +194,7 @@ static AstExpr *parse_func_call(ParserCtx *ctx, AstExpr *target) {
     try (expect_tok(ctx, Token_LParen));
 
     while (!cur_tok_is(ctx, Token_RParen)) {
-        AstExpr *arg = try (parse_number(ctx));
+        AstExpr *arg = try (parse_expr(ctx));
         dynarr_push(&expr->func_call.args, &arg);
 
         if (!eat_tok_if(ctx, Token_Comma)) {
@@ -203,9 +221,9 @@ static AstExpr *parse_expr_primary(ParserCtx *ctx) {
 
     switch (cur_tok(ctx)->kind) {
     case Token_Number: expr = try (parse_number(ctx)); break;
-    case Token_Symbol: expr = try (parse_item_path(ctx)); break;
+    case Token_Symbol: expr = try (parse_symbol(ctx)); break;
     case Token_LBrace: expr = try (parse_block(ctx)); break;
-    case Token_LParen: expr = try (parse_grouped_expr(ctx)); break;
+    case Token_Let: expr = try (parse_var_def(ctx)); break;
     default: {
         Token *tok = cur_tok(ctx);
         ErrorMsgId err = error_add(
@@ -225,19 +243,19 @@ static AstExpr *parse_expr_primary(ParserCtx *ctx) {
 
 typedef struct Operator {
     AstBinOpKind kind;
-    int          prec_l;
-    int          prec_r;
+    int          prec;
 } Operator;
 
 static Operator parse_operator(ParserCtx *ctx) {
     switch (cur_tok(ctx)->kind) {
-    case Token_Plus: return (Operator){ AstBinOp_Add, 1, 2 };
-    case Token_Dash: return (Operator){ AstBinOp_Sub, 1, 2 };
+    case Token_Plus : return (Operator){ AstBinOp_Add, 11 };
+    case Token_Dash : return (Operator){ AstBinOp_Sub, 11 };
+    case Token_Star : return (Operator){ AstBinOp_Mul, 12 };
+    case Token_Slash: return (Operator){ AstBinOp_Div, 12 };
 
-    case  Token_Star: return (Operator){ AstBinOp_Mul, 3, 4 };
-    case Token_Slash: return (Operator){ AstBinOp_Div, 3, 4 };
+    case Token_Dot:   return (Operator){ AstBinOp_MemberAccess,   20 };
 
-    default: return (Operator){ 0, -1, -1 };
+    default: return (Operator){ 0, -1 };
     }
 }
 
@@ -248,14 +266,18 @@ static AstExpr *parse_expr_prec(ParserCtx *ctx, int prec) {
         Operator op = parse_operator(ctx);
 
         // no more operators
-        if (op.prec_l == -1) { break; }
+        if (op.prec == -1) { break; }
 
-        if (op.prec_l < prec) { break; }
+        // if next operator doesn't exceed current precedence,
+        // break out and wrap expression so far
+        // 1 + 2 + 3 * 4
+        //       ^ has same precedence so wrap previous expression (1 + 2)
+        if (op.prec <= prec) { break; }
 
         // consume the operator
         eat_tok(ctx);
 
-        AstExpr *rhs = try (parse_expr_prec(ctx, op.prec_r));
+        AstExpr *rhs = try (parse_expr_prec(ctx, op.prec));
 
         AstExpr *op_expr = os_alloc_T(AstExpr);
         op_expr->kind = AstExpr_BinOp;
@@ -272,21 +294,6 @@ static AstExpr *parse_expr_prec(ParserCtx *ctx, int prec) {
 
 static AstExpr *parse_expr(ParserCtx *ctx) {
     return parse_expr_prec(ctx, 0);
-}
-
-static AstStmt *parse_stmt(ParserCtx *ctx) {
-    AstStmt *stmt = os_alloc_T(AstStmt);
-
-    switch (cur_tok(ctx)->kind) {
-    default: {
-        stmt->kind = AstStmt_Expr;
-        stmt->expr.val = try (parse_expr(ctx));
-        stmt->expr.has_semicolon = eat_tok_if(ctx, Token_Semicolon);
-        break;
-    }
-    }
-
-    return stmt;
 }
 
 static AstItem *parse_use(ParserCtx *ctx, AstItem *item) {
@@ -358,6 +365,8 @@ static AstItem *parse_func(ParserCtx *ctx, AstItem *item) {
 
     if (eat_tok_if(ctx, Token_RArrow)) {
         item->func.sig.ret_type = try (parse_type(ctx));
+    } else {
+        item->func.sig.ret_type = NULL;
     }
 
 
@@ -400,10 +409,6 @@ bool parse_module(Compiler *compiler, Module *module) {
     while (!cur_tok_is(&ctx, Token_Eof)) {
         AstItem *item = try (parse_item(&ctx));
         dynarr_push(&ctx.module->ast, &item);
-
-        if (item->kind == AstItem_Use) {
-            dynarr_push(&ctx.module->uses, &item);
-        }
     }
 
     return true;

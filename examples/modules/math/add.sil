@@ -1,0 +1,3 @@
+use math/ident
+
+pub func add(a: Int, b: Int) -> Int { math:identity(a) + b }

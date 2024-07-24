@@ -28,47 +28,93 @@ pub type Something;
 pub type Something = (Int, Int);
 pub type Something = (x: Int, y: Int);
 
-pub type Option A' = Some(A') | None
+pub type Option A' =
+    | Some A'
+    | None
 
 let num: Float = 0;
 
+let thing = |a: Int, b: Int| -> Int {
+    let x = a + b
+}
+
+array
+|> iterator:map |a| a > 10
+|> iterator:map \a -> a - 10
+|> iterator:map: |a| a' - 10
+|> iterator:map: \a -> a - 10
+
+|> some:function(param, values)
+
+iterator:map(arr_iter) fn: a > 10
+
+
+trait Number
+func add(a: Number, b: Number) -> Number
+func sub(a: Number, b: Number) -> Number
+func mul(a: Number, b: Number) -> Number
+func div(a: Number, b: Number) -> Number
+
+
 /// array.sil
-pub type Array T' = (
-    buf: ?[]T',
+pub type Array A' = (
+    buf: ?[]A',
     len: USize,
     mem: Memory,
 )
 
-pub type Vec2 = (
-    x: T',
-    y: T',
+pub type Vec2 A' = (
+    x: A',
+    y: A',
 )
-where T' is Number
+where A' is Number
 
-pub func new(T') -> Vec2[T'] {
-    Vec2(T', x=0, y=0)
+Vec2 is Number
+func add(a: Vec2, b: Vec2) -> Vec2 {
+    
 }
 
-pub func new(T', mem: Memory) -> Array[T']! {
-    with_capacity(T', mem, 8)
+pub type IVec2 = Vec2(Int)
+
+pub func new(A') -> Vec2 A' {
+    Vec2(A', x=0, y=0)
 }
 
-pub func with_capacity(T', mem: Memory, cap: USize) -> Array T'! {
+pub func new(A', mem: Memory) -> Array A'! {
+    with_capacity(A', mem, 8)
+}
+
+pub func with_capacity(A', mem: Memory, cap: USize) -> Array A'! {
     assert cap > 0;
 
     let item = map |> try map:get();
 
-    let buf = mem |> try os:alloc(T', cap);
+    let buf = mem |> try os:alloc(A', cap);
 
     Array (
+        A',
         buf,
         len = 0,
         mem,
     )
 }
 
-let arr = Array:new(Uint8, test_allocator);
-arr |> append 10;
+use silic/mem
+use silic/mem/(tracking_allocator, heap_allocator)
+
+let heap_alc     = heap_allocator:init();
+let tracking_alc = tracking_allocator:init(heap_alc);
+
+defer heap_alc     |> heap_allocator:deinit;
+defer tracking_alc |> tracking_allocator:deinit;
+
+let buf = tracking_alc |> mem:alloc;
+
+let leaks = tracking_alc |> tracking_allocator:check_leaks;
+for (leak, i) in (leaks, 0..) {
+    io:println("{i}: {leak.size}");
+}
+
 
 pub type Token =
     | Symbol(Int)
@@ -174,7 +220,234 @@ pub func main() {
 
 
 
+/// functions
+trait Number = (
+    (Self, Self) -> Self,
+)
+func add(T', T') -> T' where T' is Number
+add = (a, b) -> {
+    a + b
+}
+func div(a: T', b: T') throws -> T' {
+    if b == 0 { throw !!DivideByZero }
+
+    a / b
+}
+
+error DivError = !!DivideByZero(Number)
+func div(a: T', b: T') throws DivError -> T'
+where T' is Number {
+    if b == 0 { throw !!DivideByZero(a) }
+
+    a / b
+}
+
+try div(1, 0) else |> {|
+    !!DivideByZero(a) -> io:println("tried to divide {a} by 0")
+|}
+
+100
+|> abs
+|> {|
+    >10 -> 0
+    _   -> 1
+|}
+
+if div(1, 0) |> {
+}
+
+age |> (match
+    18..    -> {},
+    16..<18 -> {},
+      ..<16 -> {},
+)
+
+func fib(n: Int) -> Int {|
+    0 -> 0,
+    1 -> 1,
+    n -> fib(n-1) + fib(n-2),
+|}
+
+/// reduce else
+
+if not result.is_happy() { return null }
+unless result.is_happy() { return null }
+
+let color = if angry { Color.Red } else { Color.Blue };
+// to
+let oclor = case angry [true -> Color.Red, false -> Color.Blue];
+let color = case angry when true -> Color.Red, false -> Color.Blue;
+let color = if angry { Color.Red } else { Color.Blue };
+let color = angry |> {| true -> Color.Red | false -> Color.Blue |};
+let color = match angry | true -> Color.Red, false -> Color.Blue;
+
+if cond {
+    ..
+    ..
+    ..
+} else {
+    ..
+    ..
+    ..
+}
+
+case cond when
+true -> {
+    ..
+    ..
+    ..
+},
+false -> {
+    ..
+    ..
+    ..
+};
+
+match cond
+| true -> {
+}
+| false -> {
+}
+
+let lvl = case smth (
+      ..<16 -> 0
+    16..<18 -> 1
+    18..    -> 2
+);
+
+let lvl = match smth {
+    ..<16    -> 0,
+    16..< 18 -> 1,
+    18..     -> 2,
+}
+
+1 * { 2 + 3 } * 4
+
+type Token = (
+    kind: TokenKind,
+    span: []UInt8,
+)
+
+let arr: ?Array of Int
+
+type TokenKind = Num | Op | Eof
+
+parser
+|> parser:next
+|> match {
+    .. -> true,
+    .. -> false,
+}
+|> if {
+    ..
+} else {
+    ..
+}
+|> parser:hello
+
+match parser |> parser:next {
+    (kind: Num) -> {
+        ..
+        ..
+        ..
+    },
+    (kind: Op)-> {
+        ..
+        ..
+        ..
+    },
+}
+
+func fib(n: Int) -> Int { match
+
+}
 
 
+/// modules
+src
+| main.sil
+| mod1.sil
+\ math
+  | math.sil
+  | add.sil
+\ mem
+  | mem.sil
+  | tracking_allocator.sil
 
+// main.sil
+use math: PI, TAU
+use mod1: Hello
+use mem:
+    trait Allocator,
+    TrackingAllocator,
+    HeapAllocator,
+use mem/tracking_allocator
+use parser:
+    ParserCtx,
+use typechecker:
+    TypeCheckerCtx,
+use token:
+    TextPosition
+
+mod1.fn();
+let i = math:complex(1, 2).imag;
+let tracking_alc = tracking_allocator:init();
+
+// mod1.sil
+func fn() {}
+
+// math.sil
+pub const PI = 3.14159
+
+let num = 2 * Float64(PI);
+let pos = Vec2(1, 2);
+
+// add.sil
+pub func add(a: Number, b: Number) -> T' { a + b }
+
+// mem.sil
+pub trait Allocator
+mod func allocate_with(T', size: Size) -> []T' {
+    let ptr = *T' = c:malloc(size);
+    ptr |> pointer:to_slice(size)
+}
+
+// tracking_allocator.sil
+use .allocator
+
+pub type TrackingAllocator
+pub func init() -> TrackingAllocator
+
+/// simple lifetimes
+
+func take(take a: Thing) { .. }
+func borrow(a: Thing) -> Int32 { .. }
+func and_copy(a: Thing) -> Int { .. }
+
+take(a);
+borrow(a);
+and_copy(copy a);
+
+func longest(a: String, b: String) throws -> mut ref(a, b) String { if a.len > b.len { a } else { b } }
+
+type Context = []Char
+type Parser = (ctx: *Context)
+
+func parse(parser: Parser) throws ref Context -> {
+    parser.ctx[0..10]
+}
+
+func index(array: Array T', idx: USize) -> ref T' { array.buf[i] }
+
+let mut arr = Array(..);
+let mut ref item = arr |> index(0);
+let mut item = arr |> index(0);
+
+let ptr: *Int = &item;
+
+arr |> push(10);
+
+item = item + 1;
+
+impl Vec2 add(self: Vec2, other: Vec2) -> Vec2
 

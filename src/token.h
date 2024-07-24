@@ -1,7 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include "fir.h"
+#include "fir/fir.h"
 #include <stdbool.h>
 
 
@@ -50,14 +50,15 @@ typedef enum TokenKind {
     Token_Func,
     Token_Return,
     Token_Pub,
+    Token_Let,
 
     Token_Eof,
 } TokenKind;
 
 typedef struct Token {
-    TokenKind    kind;
-    FirString       span;
-    TextPos pos;
+    TokenKind kind;
+    String    span;
+    TextPos   pos;
 } Token;
 
 bool tok_eq(Token *a, Token *b);

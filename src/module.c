@@ -1,23 +1,16 @@
 #include "module.h"
 
-#include "os.h"
+#include <fir/dynarr.h>
 #include <stdio.h>
+#include <dirent.h>
 
 
-Module *module_init(FirString file_path) {
+Module *module_init(String path, String source) {
     Module *module = os_alloc_T(Module);
 
-    module->file_path = file_path;
+    module->file_path = path;
 
-    OsReadFileResult read_file_result = os_read_file(file_path);
-    if (!read_file_result.ok) {
-        printf("couldn't find %.*s\n", fir_string_fmt(file_path));
-        return NULL;
-    }
-
-    module->src = read_file_result.src;
-
-    ns_init(&module->ns, NULL);
+    module->src = source;
 
     dynarr_init(&module->tokens, 32);
     dynarr_init(&module->ast, 16);

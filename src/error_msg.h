@@ -17,18 +17,18 @@ typedef enum ErrorMsgKind {
 
 typedef struct ErrorMsg {
     ErrorMsgSeverity severity;
-    FirString        msg;
-    FirString        hint;
+    String        msg;
+    String        hint;
 
-    FirString        file_path;
+    String        file_path;
 
-    FirString        span;
+    String        span;
     TextPos          pos;
 } ErrorMsg;
 
 
 typedef struct Compiler Compiler;
-ErrorMsgId error_add(Compiler *compiler, ErrorMsgKind kind, FirString file_path, FirString span, TextPos pos);
+ErrorMsgId error_add(Compiler *compiler, ErrorMsgKind kind, String file_path, String span, TextPos pos);
 
 __attribute__((format(printf, 3, 4)))
 void error_hint(Compiler *compiler, ErrorMsgId id, char *msg, ...);

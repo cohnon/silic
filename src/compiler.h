@@ -3,16 +3,15 @@
 
 #include "module.h"
 #include "error_msg.h"
-#include "namespace.h"
-#include <fir.h>
 
+#include <fir/fir.h>
 
 typedef struct Compiler {
 
     // lookup paths for imports
-    FirString main_dir_path;
-    FirString std_dir_path;
-    FirString lib_dir_path;
+    String main_dir_path;
+    String std_dir_path;
+    String lib_dir_path;
 
     // all the modules in this compilation
     // keeps track of the current module being processed
@@ -25,6 +24,6 @@ typedef struct Compiler {
 } Compiler;
 
 Compiler *compiler_init(void);
-bool compiler_compile(Compiler *compiler, FirString file_path);
+bool compiler_compile(Compiler *compiler, String file_path);
 
 #endif

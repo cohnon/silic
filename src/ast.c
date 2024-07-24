@@ -1,6 +1,5 @@
 #include "ast.h"
 
-#include "os.h"
 #include "module.h"
 #include <inttypes.h>
 #include <stdio.h>
@@ -13,7 +12,7 @@ bool ast_has_implicit_semicolon(AstExpr *expr) {
 }
 
 static void ast_debug_type(AstType *type) {
-    printf("%.*s", fir_string_fmt(type->span));
+    printf("%.*s", string_fmt(type->span));
 }
 
 static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
@@ -29,15 +28,18 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
         printf("NUMBER(%" PRIu64 ")\n", expr->number.integral);
         break;
     }
-    case AstExpr_ItemPath: {
-        printf("ITEM_PATH(");
-        dynarr_foreach(expr->item_path.parts, i) {
-            FirString part = dynarr_get(&expr->item_path.parts, i);
-            printf("%.*s", fir_string_fmt(part));
+    case AstExpr_VarDef: {
+        printf("VAR_DEF(%.*s)\n", string_fmt(expr->var_def.name));
+        ast_debug_expr(expr->var_def.val, indent_lvl + 1);
+        break;
+    }
+    case AstExpr_NamedUse: {
+        printf("NAMED_USE(");
+        String *parts = expr->named_use.parts;
+        printf("%.*s", string_fmt(parts[0]));
 
-            if (i + 1 < expr->item_path.parts.len) {
-                printf(":");
-            }
+        if (expr->named_use.qualified) {
+            printf(":%.*s", string_fmt(parts[1]));
         }
         printf(")\n");
         break;
@@ -54,8 +56,8 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
     case AstExpr_Block: {
         printf("BLOCK\n");
         dynarr_foreach(expr->block.stmts, i) {
-            AstStmt *stmt = dynarr_get(&expr->block.stmts, i);
-            ast_debug_expr(stmt->expr.val, indent_lvl + 1);
+            AstExpr *block = dynarr_get(&expr->block.stmts, i);
+            ast_debug_expr(block, indent_lvl + 1);
         }
         break;
     }
@@ -78,27 +80,25 @@ static void ast_debug_expr(AstExpr *expr, int indent_lvl) {
 }
 
 static void ast_debug_use(AstItem *item) {
-    printf("use ");
-
     dynarr_foreach(item->use.mod_path, i) {
-        FirString sub_mod = dynarr_get(&item->use.mod_path, i);
+        String sub_mod = dynarr_get(&item->use.mod_path, i);
 
-        printf("%.*s", fir_string_fmt(sub_mod));
+        printf("%.*s", string_fmt(sub_mod));
 
         if (i + 1 < item->use.mod_path.len) {
             printf("/");
         }
     }
 
-    printf(";\n");
+    printf("\n");
 }
 
 static void ast_debug_func(AstItem *item) {
-    printf("func %.*s(", fir_string_fmt(item->name));
+    printf("func %.*s(", string_fmt(item->name));
 
     dynarr_foreach(item->func.sig.params, i) {
         AstFuncParam *param = dynarr_get_ref(&item->func.sig.params, i);
-        printf("%.*s: ", fir_string_fmt(param->name));
+        printf("%.*s: ", string_fmt(param->name));
         ast_debug_type(param->type);
         if (i < item->func.sig.params.len - 1) {
             printf(", ");
@@ -126,12 +126,19 @@ static void ast_debug_item(AstItem *item) {
 }
 
 void ast_debug(Module *module) {
-    printf(ANSI_BLUE "\n@@ File @@\n" ANSI_RESET "%.*s\n", fir_string_fmt(module->file_path));
+    printf(ANSI_BLUE "\n@@ File @@\n" ANSI_RESET "%.*s\n", string_fmt(module->file_path));
 
-    if (module->uses.len > 0) {
-        printf(ANSI_BLUE "Imports\n" ANSI_RESET);
-        dynarr_foreach(module->uses, i) {
-            ast_debug_use(dynarr_get(&module->uses, i));
+    // only print 'Imports' title if module has imports
+    bool has_imports = false;
+    if (module->ast.len > 0) {
+        dynarr_foreach(module->ast, i) {
+            AstItem *item = dynarr_get(&module->ast, i);
+            if (item->kind != AstItem_Use) { continue; }
+            if (!has_imports) {
+                printf(ANSI_BLUE "Imports\n" ANSI_RESET);
+                has_imports = true;
+            }
+            ast_debug_use(item);
         }
     }
 

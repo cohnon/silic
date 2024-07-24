@@ -1,15 +1,15 @@
 #ifndef AST_H
 #define AST_H
 
-#include "dynarr.h"
 #include "token.h"
-#include <fir.h>
+
+#include <fir/fir.h>
+#include <fir/dynarr.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 
 typedef struct AstExpr AstExpr;
-typedef struct AstStmt AstStmt;
 
 typedef enum AstTypeKind {
     AstType_Symbol,
@@ -18,23 +18,27 @@ typedef enum AstTypeKind {
 
 typedef struct AstType {
     AstTypeKind kind;
-    FirString span;
+    String span;
 } AstType;
 
 typedef enum AstExprKind {
+    // Literals
     AstExpr_Number,
     AstExpr_String,
     AstExpr_Bool,
 
-    AstExpr_Block,
+    // statements
     AstExpr_VarDef,
     AstExpr_Ret,
 
+    // eval
+    AstExpr_Block,
+    AstExpr_NamedUse,
+    AstExpr_FuncCall,
+
+    // operators
     AstExpr_UnOp,
     AstExpr_BinOp,
-
-    AstExpr_ItemPath,
-    AstExpr_FuncCall,
 } AstExprKind;
 
 typedef struct AstNumber {
@@ -45,7 +49,7 @@ typedef struct AstNumber {
 } AstNumber;
 
 typedef struct AstString {
-    FirString val;
+    String val;
 } AstString;
 
 typedef struct AstBool {
@@ -53,31 +57,46 @@ typedef struct AstBool {
 } AstBool;
 
 typedef struct AstBlock {
-    DynArr(AstStmt*) stmts;
+    DynArr(AstExpr*) stmts;
+    bool             is_terminated;
 } AstBlock;
 
-typedef struct AstVar {
-    FirString   name;
+typedef enum AstVarDefKind {
+    AstVarDef_Let,
+    AstVarDef_Static,
+    AstVarDef_Const,
+} AstVarDefKind;
+
+typedef struct AstVarDef {
+    AstVarDefKind kind;
+
+    String   name;
     AstType *type;
     AstExpr *val;
-} AstVar;
+} AstVarDef;
 
 typedef struct AstRet {
     AstExpr *val;
 } AstRet;
 
 typedef enum AstBinOpKind {
-    AstBinOp_And,
-    AstBinOp_Or,
-    AstBinOp_CmpEq,
-    AstBinOp_CmpNEq,
-    AstBinOp_CmpGt,
-    AstBinOp_CmpLt,
-    AstBinOp_Assign,
-    AstBinOp_Add,
-    AstBinOp_Sub,
-    AstBinOp_Mul,
-    AstBinOp_Div,
+    // arithmetic
+    AstBinOp_Add, // a + b
+    AstBinOp_Sub, // a - b
+    AstBinOp_Mul, // a * b
+    AstBinOp_Div, // a / b
+
+    // logic
+    AstBinOp_And,    // a and b
+    AstBinOp_Or,     // a or b
+    AstBinOp_CmpEq,  // a == b
+    AstBinOp_CmpNEq, // a != b
+    AstBinOp_CmpGt,  // a > b
+    AstBinOp_CmpLt,  // a < b
+
+    // misc
+    AstBinOp_Assign,         // a = b
+    AstBinOp_MemberAccess,   // a.b
 } AstBinOpKind;
 
 typedef struct AstBinOp {
@@ -95,9 +114,11 @@ typedef struct AstUnOp {
     AstExpr    *val;
 } AstUnOp;
 
-typedef struct AstItemPath {
-    DynArr(FirString) parts;
-} AstItemPath;
+typedef struct AstNamedUse {
+    // can either be 'item' or 'module:item'
+    String parts[2];
+    bool      qualified;
+} AstNamedUse;
 
 typedef struct AstFuncCall {
     AstExpr         *target;
@@ -112,45 +133,32 @@ typedef struct AstExpr {
         AstBool     bool_;
 
         AstBlock    block;
-        AstVar      var;
+        AstVarDef   var_def;
         AstRet      ret;
 
         AstBinOp    bin_op;
         AstUnOp     un_op;
 
-        AstItemPath  item_path;
+        AstNamedUse named_use;
         AstFuncCall func_call;
     };
 } AstExpr;
-
-typedef enum AstStmtKind {
-    AstStmt_Expr,
-} AstStmtKind;
-
-typedef struct AstStmtExpr {
-    bool     has_semicolon;
-    AstExpr *val;
-} AstStmtExpr;
-
-typedef struct AstStmt {
-    AstStmtKind kind;
-
-    union {
-        AstStmtExpr expr;
-    };
-} AstStmt;
 
 typedef enum AstItemKind {
     AstItem_Use,
     AstItem_Func,
 } AstItemKind;
 
+typedef struct Module Module;
 typedef struct AstUse {
-    DynArr(FirString) mod_path;
+    DynArr(String) mod_path;
+    // if mod_path points to a directory,
+    // keep track of every module in it
+    DynArr(Module*)   modules;
 } AstUse;
 
 typedef struct AstFuncParam {
-    FirString     name;
+    String     name;
     AstType *type;
 } AstFuncParam;
 
@@ -168,7 +176,7 @@ typedef struct AstItem {
     AstItemKind kind;
     bool        public;
 
-    FirString   name;
+    String   name;
     TextPos     pos;
 
     union {

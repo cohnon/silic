@@ -1,0 +1,7 @@
+use utils
+use math
+
+func main() {
+    let a: Int = math:add(1, utils:random());
+    let b: Int = math:sub(10, a);
+}

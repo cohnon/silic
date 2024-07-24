@@ -2,6 +2,7 @@
 
 #include "error_msg.h"
 #include "token.h"
+#include <fir/dynarr.h>
 #include <assert.h>
 
 
@@ -22,7 +23,7 @@
 typedef struct LexerCtx {
     Compiler *compiler;
     Module   *module;
-    FirString src;
+    String src;
     size_t    src_idx;
     Token    *current_token;
     TextPos   pos;
@@ -64,6 +65,7 @@ const SymTokPair sym_tok_map[] = {
     { "func",        Token_Func        },
     { "return",      Token_Return      },
     { "pub",         Token_Pub         },
+    { "let",         Token_Let         },
 };
 
 static void end_token(LexerCtx *ctx) {

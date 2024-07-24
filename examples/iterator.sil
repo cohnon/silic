@@ -1,46 +1,60 @@
 /// iterator.sil
-pub trait Iterator = (
-    func next(Self) -> ?Item',
-    func size_hint(Self) -> (USize, USize),
-)
 
-func [Iterator] size_hint(self: Any') -> (USize, ?USize) { (0, null) }
+// style 1
+pub trait Iterator Item' where
 
-pub func filter(self: Iterator[Item'], predicate: func(Item') -> Bool) -> Filter[Item'] {
-    Filter(iter=self, pred=predicate)
+func next(self: Iterator Item') -> ?Item'
+
+func size_hint(self: Iterator) -> (USize, ?USize) { (0, null) }
+
+func find(self: Iterator Item', predicate: func(Item') -> Bool) -> ?Item' {
+    loop {
+        let item = try self |> next();
+
+        if predicate(item) {
+            ret item;
+        }
+    }
 }
 
-pub func take(self: Iterator[Item'], n: USize) -> Take[Item'] {
-    Take(iter=self, n)
+func filter(self: Iterator Item', predicate: func(Item') -> Bool) -> Filter Item' {
+    Filter(Item' iter=self, pred=predicate)
+}
+
+func take(self: Iterator Item', n: USize) -> Take Item' {
+    Take(Item' iter=self, n)
 }
 
 /// iterator/filter.sil
 use iterator as iter
 
-type Filter = (
-    iter: Iterator[Item'],
-    pred: func(Iterator:Item) -> Bool,
+type Filter Item' = (
+    iter: Iterator Item',
+    pred: func(Item') -> Bool,
 )
 
-func [Iterator] next(self: Filter[Item']) -> ?Item' {
-    iter:find(self.iter, self.predicate);
+Filter is Iterator
+[inline]
+func next(self: Filter Item') -> ?Item' {
+    self.iter |> iter:find(self.predicate)
 }
 
 /// iterator/take.sil
 use iterator as iter
 
-type Take Item' = (
-    iter: Iterator[Item'],
+type Take = (
+    iter: Iterator,
     n: ISize,
 )
 
-@inline
-func [Iterator] next(self: Take[Item']) -> ?Item' {
+Take is Iterator
+[inline]
+func next(self: Take[Item']) -> ?Item' {
     match self.n
     | 0 -> null
     | _ -> {
         self.n -= 1;
-        self.iter |> Iterator:next
+        self.iter |> iter:next
     }
 }
 
@@ -53,7 +67,8 @@ type Fib (
     next: Int = 1,
 )
 
-func [Iterator] next(self: Fib) -> ?Int {
+Fib is Iterator
+func next(self: Fib) -> ?Int {
     (self.cur, self.next) = (self.next, self.cur + self.next);
     self.cur
 }
