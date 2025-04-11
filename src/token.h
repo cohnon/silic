@@ -15,16 +15,20 @@ typedef enum TokenKind {
     Token_BraceClose,
     
     Token_Comma,
+    Token_Period,
     Token_Colon,
 
     Token_ArrowRight,
 
-    // idendifiers
+    // identifiers
     Token_IdentUpper,
     Token_IdentLower,
 
+    // literals
+    Token_String,
+
     // keywords
-    Token_Func,
+    Token_Use,
 } TokenKind;
 
 typedef struct Token {
