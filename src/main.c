@@ -4,7 +4,10 @@
 #include <string.h>
 
 int main(void) {
-    char *src = "func add(a: Int, b: Int) -> Int { a + b }";
+    char *src =
+        "use Std.Log\n"
+        "Log.info(\"hey world\")\n"
+    ;
 
     Lexer lxr = lexer_init(src, strlen(src));
 
@@ -17,6 +20,8 @@ int main(void) {
 
         printf("%s ", token_fmt(tok.kind));
     }
+
+    printf("\n");
 
     return 0;
 }

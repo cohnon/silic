@@ -65,6 +65,17 @@ static _Bool is_builtin(Lexer *lxr, char *ident) {
     return strncmp(tok.src, ident, tok.len) == 0;
 }
 
+static void lex_string(Lexer *lxr) {
+    lxr->pos += 1;
+
+
+    while (cur_char(lxr) != '"') {
+        lxr->pos += 1;
+    }
+
+    end_token(lxr, Token_String);
+}
+
 static void lex_ident(Lexer *lxr) {
     _Bool uppercase = 'A' <= cur_char(lxr) && cur_char(lxr) <= 'Z';
 
@@ -83,18 +94,18 @@ static void lex_ident(Lexer *lxr) {
 
     end_token(lxr, uppercase ? Token_IdentUpper : Token_IdentLower);
 
-    if (is_builtin(lxr, "func")) {
-        lxr->next_tok.kind = Token_Func;
+    if (is_builtin(lxr, "use")) {
+        lxr->next_tok.kind = Token_Use;
     }
 }
 
 static void lex(Lexer *lxr) {
+    skip_whitespace(lxr);
+
     if (lxr->pos >= lxr->src_len) {
         end_token(lxr, Token_Eof);
         return;
     }
-
-    skip_whitespace(lxr);
 
     start_token(lxr);
 
@@ -108,7 +119,10 @@ static void lex(Lexer *lxr) {
         case '}': end_token(lxr, Token_BraceClose); break;
         
         case ',': end_token(lxr, Token_Comma); break;
+        case '.': end_token(lxr, Token_Period); break;
         case ':': end_token(lxr, Token_Colon); break;
+
+        case '"': lex_string(lxr); break;
 
         default: {
             if ('a' <= cur_char(lxr) && cur_char(lxr) <= 'z') {
