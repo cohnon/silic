@@ -7,6 +7,7 @@ typedef enum TokenKind {
 
     // operators
     Token_Plus,
+    Token_Equal,
 
     // structural
     Token_ParenOpen,
@@ -16,6 +17,7 @@ typedef enum TokenKind {
     
     Token_Comma,
     Token_Period,
+    Token_Semicolon,
     Token_Colon,
 
     Token_ArrowRight,
@@ -28,13 +30,14 @@ typedef enum TokenKind {
     Token_String,
 
     // keywords
+    Token_Let,
     Token_Use,
 } TokenKind;
 
 typedef struct Token {
     TokenKind kind;
-    char *src;
     unsigned int len;
+    char *src;
 } Token;
 
 char *token_fmt(TokenKind kind);
