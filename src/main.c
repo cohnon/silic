@@ -1,27 +1,21 @@
-#include "parser/lexer.h"
+#include "fe/parser.h"
 
-#include <stdio.h>
 #include <string.h>
 
 int main(void) {
     char *src =
-        "use Std.Log\n"
-        "Log.info(\"hey world\")\n"
+        "use Silic.Log\n"
+        "let msg = \"hello there\"\n"
+        "let main () = {\n"
+        "    Silic.log(msg);\n"
+        "    Silic.hi(there);\n"
+        "}\n"
     ;
 
-    Lexer lxr = lexer_init(src, strlen(src));
+    Parser prs = parser_init(src, strlen(src));
+    Ast *ast = parser_parse(&prs);
 
-    for (;;) {
-        Token tok = lexer_bump(&lxr);
-
-        if (tok.kind == Token_Eof) {
-            break;
-        }
-
-        printf("%s ", token_fmt(tok.kind));
-    }
-
-    printf("\n");
+    print_ast(stderr, ast);
 
     return 0;
 }

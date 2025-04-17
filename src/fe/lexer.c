@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 Lexer lexer_init(char *src, unsigned int len) {
@@ -57,7 +58,7 @@ static void lex_dash(Lexer *lxr) {
     }
 }
 
-static _Bool is_builtin(Lexer *lxr, char *ident) {
+static _Bool tok_eq(Lexer *lxr, char *ident) {
     Token tok = lxr->next_tok;
 
     if (tok.len != strlen(ident)) { return 0; }
@@ -94,7 +95,9 @@ static void lex_ident(Lexer *lxr) {
 
     end_token(lxr, uppercase ? Token_IdentUpper : Token_IdentLower);
 
-    if (is_builtin(lxr, "use")) {
+    if (tok_eq(lxr, "let")) {
+        lxr->next_tok.kind = Token_Let;
+    } else if (tok_eq(lxr, "use")) {
         lxr->next_tok.kind = Token_Use;
     }
 }
@@ -112,6 +115,7 @@ static void lex(Lexer *lxr) {
     switch (cur_char(lxr)) {
         case '+': end_token(lxr, Token_Plus); break;
         case '-': lex_dash(lxr); break;
+        case '=': end_token(lxr, Token_Equal); break;
 
         case '(': end_token(lxr, Token_ParenOpen); break;
         case ')': end_token(lxr, Token_ParenClose); break;
@@ -120,6 +124,7 @@ static void lex(Lexer *lxr) {
         
         case ',': end_token(lxr, Token_Comma); break;
         case '.': end_token(lxr, Token_Period); break;
+        case ';': end_token(lxr, Token_Semicolon); break;
         case ':': end_token(lxr, Token_Colon); break;
 
         case '"': lex_string(lxr); break;
@@ -152,8 +157,12 @@ Token lexer_peek(Lexer *lxr) {
 }
 
 Token lexer_expect(Lexer *lxr, TokenKind expected) {
-    Token tok = lexer_peek(lxr);
-    assert(tok.kind == expected);
+    Token tok = lexer_bump(lxr);
+
+    if (tok.kind != expected) {
+        fprintf(stderr, "Lexer Error: expected %s, got %s\n", token_fmt(expected), token_fmt(tok.kind));
+        exit(1);
+    }
 
     return tok;
 }
