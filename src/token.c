@@ -6,6 +6,9 @@ char *token_fmt(TokenKind kind) {
         case Token_Eof: return "<eof>";
 
         case Token_Plus: return "+";
+        case Token_Dash: return "-";
+        case Token_Star: return "*";
+        case Token_Slash: return "/";
         case Token_Equal: return "=";
 
         case Token_BraceOpen: return "{";

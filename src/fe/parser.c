@@ -2,6 +2,7 @@
 
 #include "ast.h"
 #include "fe/lexer.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -16,11 +17,13 @@ static AstExpr *parse_expression(Parser *prs);
 
 static AstExpr *parse_block(Parser *prs) {
     AstExpr *expr = malloc(sizeof(AstExpr));
+    expr->kind = AstExpr_Block;
+    expr->block.exprs = list_init(AstExpr *, 16);
 
     lexer_expect(&prs->lxr, Token_BraceOpen);
 
     while (lexer_peek(&prs->lxr).kind != Token_BraceClose) {
-        parse_expression(prs);
+        list_push(&expr->block.exprs, AstExpr *, parse_expression(prs));
         
         if (lexer_peek(&prs->lxr).kind != Token_Semicolon) {
             break;
@@ -36,26 +39,22 @@ static AstExpr *parse_block(Parser *prs) {
 
 static AstExpr *parse_identifier(Parser *prs) { 
     AstExpr *expr = malloc(sizeof(AstExpr));
+    expr->kind = AstExpr_Identifier;
+    expr->ident.tok = lexer_bump(&prs->lxr);
+    assert(
+        expr->ident.tok.kind == Token_IdentLower ||
+        expr->ident.tok.kind == Token_IdentUpper
+    );
 
-    lexer_expect(&prs->lxr, Token_IdentLower);
+    if (lexer_peek(&prs->lxr).kind == Token_Period) {
+        lexer_bump(&prs->lxr); // .
+        AstExpr *mem_expr = malloc(sizeof(AstExpr));
+        mem_expr->kind = AstExpr_MemberAccess;
+        mem_expr->mem_access.target = expr;
+        mem_expr->mem_access.member = parse_identifier(prs);
 
-    if (lexer_peek(&prs->lxr).kind == Token_ParenOpen) {
-        lexer_bump(&prs->lxr); // (
-        parse_expression(prs);
-        lexer_expect(&prs->lxr, Token_ParenClose);
+        return mem_expr;
     }
-
-
-    return expr;
-}
-
-static AstExpr *parse_module_access(Parser *prs) {
-    AstExpr *expr = malloc(sizeof(AstExpr));
-    expr->kind = AstExpr_ModuleAccess;
-
-    lexer_expect(&prs->lxr, Token_IdentUpper);
-    lexer_expect(&prs->lxr, Token_Period);
-    parse_identifier(prs);
 
     return expr;
 }
@@ -63,26 +62,119 @@ static AstExpr *parse_module_access(Parser *prs) {
 static AstExpr *parse_string_literal(Parser *prs) {
     AstExpr *expr = malloc(sizeof(AstExpr *));
     expr->kind = AstExpr_String;
-    expr->string = lexer_expect(&prs->lxr, Token_String);
+    expr->string.tok = lexer_expect(&prs->lxr, Token_String);
 
     return expr;
 }
 
+static AstExpr *parse_function_call(Parser *prs, AstExpr *target) {
+    AstExpr *expr = malloc(sizeof(AstExpr));
+    expr->kind = AstExpr_FunctionCall;
+    expr->fn_call.target = target;
+    expr->fn_call.args = list_init(AstExpr*, 6);
 
-static AstExpr *parse_expression(Parser *prs) {
+    lexer_expect(&prs->lxr, Token_ParenOpen);
+
+    while (lexer_peek(&prs->lxr).kind != Token_ParenClose) {
+        AstExpr *arg = parse_expression(prs);
+        list_push(&expr->fn_call.args, AstExpr *, arg);
+
+        if (lexer_peek(&prs->lxr).kind != Token_Comma) {
+            break;
+        }
+    }
+
+    lexer_expect(&prs->lxr, Token_ParenClose);
+
+    return expr;
+}
+
+static AstExpr *parse_expression_suffix(Parser *prs, AstExpr *target) {
+    for (;;) {
+        switch (lexer_peek(&prs->lxr).kind) {
+            case Token_ParenOpen: target = parse_function_call(prs, target); break;
+            default: return target;
+        }
+    }
+}
+
+static AstExpr *parse_expression_primary(Parser *prs) {
+    AstExpr *expr = NULL;
+
     switch (lexer_peek(&prs->lxr).kind) {
-        case Token_BraceOpen: return parse_block(prs);
-        case Token_IdentLower: return parse_identifier(prs);
-        case Token_IdentUpper: return parse_module_access(prs);
-        case Token_String: return parse_string_literal(prs);
+        case Token_ParenOpen:
+            lexer_bump(&prs->lxr); // (
+            parse_expression(prs);
+            lexer_expect(&prs->lxr, Token_ParenClose);
+            break;
+
+        case Token_BraceOpen: expr = parse_block(prs); break;
+
+        case Token_IdentLower:
+        case Token_IdentUpper: expr = parse_identifier(prs); break;
+
+        case Token_String: expr = parse_string_literal(prs); break;
         default:
             fprintf(
                 stderr,
-                "unexpected expression %s\n",
+                "unexpected expression token %s\n",
                 token_fmt(lexer_peek(&prs->lxr).kind)
             );
             exit(1);
     }
+
+    return parse_expression_suffix(prs, expr);
+}
+
+typedef struct Operator {
+    AstExprBinOpKind kind;
+    int prec;
+} Operator;
+
+static Operator parse_operator(Parser *prs) {
+    switch (lexer_peek(&prs->lxr).kind) {
+        case Token_Plus: return (Operator){ AstExprBinOp_Add, 11 };
+        case Token_Dash: return (Operator){ AstExprBinOp_Sub, 11 };
+        case Token_Star: return (Operator){ AstExprBinOp_Mul, 12 };
+        case Token_Slash: return (Operator){ AstExprBinOp_Div, 12 };
+
+        default: return (Operator){ 0, -1 };
+    }
+}
+
+static AstExpr *parse_expression_prec(Parser *prs, int prec) {
+    AstExpr *lhs = parse_expression_primary(prs);
+
+    for (;;) {
+        Operator op = parse_operator(prs);
+
+        // no operator
+        if (op.prec == -1) { break; }
+
+        // if next operator doesn't exceed current precedence
+        // break out and wrap expression so far
+        // 1 + 2 + 3 * 4
+        //       ^ has same precedence so wrap previous expression (1 + 2)
+        if (op.prec <= prec) { break; }
+
+        lexer_bump(&prs->lxr); // operator
+
+        AstExpr *rhs = parse_expression_prec(prs, op.prec);
+        
+        AstExpr *op_expr = malloc(sizeof(AstExpr));
+        op_expr->kind = AstExpr_BinOp;
+        op_expr->bin_op.kind = op.kind;
+        op_expr->bin_op.lhs = lhs;
+        op_expr->bin_op.rhs = rhs;
+
+        lhs = op_expr;
+    }
+
+    return lhs;
+}
+
+static AstExpr *parse_expression(Parser *prs) {
+    return parse_expression_prec(prs, 0);
 }
 
 static AstStmt *parse_use(Parser *prs) {
