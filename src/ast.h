@@ -22,25 +22,61 @@ typedef struct AstPattern {
 typedef struct AstExpr AstExpr;
 
 typedef enum AstExprKind {
+    AstExpr_BinOp,
     AstExpr_Block,
 
-    AstExpr_ModuleAccess,
+    AstExpr_Identifier,
+    AstExpr_MemberAccess,
     AstExpr_FunctionCall,
 
     // literals
     AstExpr_String,
 } AstExprKind;
 
+typedef enum AstExprBinOpKind {
+    AstExprBinOp_Add,
+    AstExprBinOp_Sub,
+    AstExprBinOp_Mul,
+    AstExprBinOp_Div,
+} AstExprBinOpKind;
+
+typedef struct AstExprBinOp {
+    AstExprBinOpKind kind;
+    AstExpr *lhs, *rhs;
+} AstExprBinOp;
+
+typedef struct AstExprBlock {
+    List exprs;
+} AstExprBlock;
+
+typedef struct AstExprIdentifier {
+    Token tok;
+} AstExprIdentifier;
+
+typedef struct AstExprMemberAccess {
+    AstExpr *target;
+    AstExpr *member;
+} AstExprMemberAccess;
+
+typedef struct AstExprFunctionCall {
+    AstExpr *target;
+    List args;
+} AstExprFunctionCall;
+
+typedef struct AstExprString {
+    Token tok;
+} AstExprString;
+
 struct AstExpr {
     AstExprKind kind;
 
     union {
-        struct {
-            AstExpr *target;
-            List args;
-        } call;
-
-        Token string;
+        AstExprBinOp bin_op;
+        AstExprBlock block;
+        AstExprIdentifier ident;
+        AstExprMemberAccess mem_access;
+        AstExprFunctionCall fn_call;
+        AstExprString string;
     };
 };
 

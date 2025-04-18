@@ -7,6 +7,9 @@ typedef enum TokenKind {
 
     // operators
     Token_Plus,
+    Token_Dash,
+    Token_Star,
+    Token_Slash,
     Token_Equal,
 
     // structural
