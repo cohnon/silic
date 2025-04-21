@@ -50,11 +50,12 @@ static void end_token(Lexer *lxr, TokenKind kind) {
 }
 
 static void lex_dash(Lexer *lxr) {
-    lxr->pos += 1;
-
-    switch (cur_char(lxr)) {
-        case '>': end_token(lxr, Token_ArrowRight); break;
-        default: end_token(lxr, Token_Invalid); break;
+    switch (next_char(lxr)) {
+        case '>':
+            lxr->pos += 1;
+            end_token(lxr, Token_ArrowRight);
+            break;
+        default: end_token(lxr, Token_Dash); break;
     }
 }
 
@@ -115,6 +116,8 @@ static void lex(Lexer *lxr) {
     switch (cur_char(lxr)) {
         case '+': end_token(lxr, Token_Plus); break;
         case '-': lex_dash(lxr); break;
+        case '*': end_token(lxr, Token_Star); break;
+        case '/': end_token(lxr, Token_Slash); break;
         case '=': end_token(lxr, Token_Equal); break;
 
         case '(': end_token(lxr, Token_ParenOpen); break;

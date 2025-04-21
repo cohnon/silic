@@ -2,6 +2,7 @@
 
 #include "ast.h"
 #include "fe/lexer.h"
+#include "list.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,13 @@ Parser parser_init(char *src, unsigned int len) {
     prs.lxr = lexer_init(src, len);
 
     return prs;
+}
+
+static AstPattern *parse_pattern(Parser *prs) {
+    AstPattern *pat = malloc(sizeof(AstPattern));
+    pat->ident = lexer_expect(&prs->lxr, Token_IdentLower);
+
+    return pat;
 }
 
 static AstExpr *parse_expression(Parser *prs);
@@ -25,11 +33,12 @@ static AstExpr *parse_block(Parser *prs) {
     while (lexer_peek(&prs->lxr).kind != Token_BraceClose) {
         list_push(&expr->block.exprs, AstExpr *, parse_expression(prs));
         
-        if (lexer_peek(&prs->lxr).kind != Token_Semicolon) {
+        if (lexer_peek(&prs->lxr).kind == Token_Semicolon) {
+            lexer_bump(&prs->lxr);
+        } else {
             break;
         }
 
-        lexer_bump(&prs->lxr); // ;
     }
 
     lexer_expect(&prs->lxr, Token_BraceClose);
@@ -79,9 +88,12 @@ static AstExpr *parse_function_call(Parser *prs, AstExpr *target) {
         AstExpr *arg = parse_expression(prs);
         list_push(&expr->fn_call.args, AstExpr *, arg);
 
-        if (lexer_peek(&prs->lxr).kind != Token_Comma) {
+        if (lexer_peek(&prs->lxr).kind == Token_Comma) {
+            lexer_bump(&prs->lxr);
+        } else {
             break;
         }
+
     }
 
     lexer_expect(&prs->lxr, Token_ParenClose);
@@ -202,17 +214,33 @@ static AstStmt *parse_let(Parser *prs) {
 
     lexer_expect(&prs->lxr, Token_Let);
 
-    lexer_expect(&prs->lxr, Token_IdentLower);
+    stmt->let.pat = parse_pattern(prs);
 
     // function parameters
+    stmt->let.is_fn = false;
     if (lexer_peek(&prs->lxr).kind != Token_Equal) {
+        stmt->let.is_fn = true;
+        stmt->let.params = list_init(AstPattern *, 8);
+
         lexer_expect(&prs->lxr, Token_ParenOpen);
+
+        while (lexer_peek(&prs->lxr).kind != Token_ParenClose) {
+            list_push(&stmt->let.params, AstPattern *, parse_pattern(prs));
+
+            if (lexer_peek(&prs->lxr).kind == Token_Comma) {
+                lexer_bump(&prs->lxr);
+            } else {
+                break;
+            }
+
+        }
+
         lexer_expect(&prs->lxr, Token_ParenClose);
     }
 
     lexer_expect(&prs->lxr, Token_Equal);
 
-    stmt->expr = parse_expression(prs);
+    stmt->let.expr = parse_expression(prs);
 
     return stmt;
 }

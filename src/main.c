@@ -4,12 +4,7 @@
 
 int main(void) {
     char *src =
-        "use Silic.Log\n"
-        "let msg = \"hello there\"\n"
-        "let main () = {\n"
-        "    Silic.log(msg);\n"
-        "    Silic.hi(there);\n"
-        "}\n"
+        "let add (a, b) = a + b\n"
     ;
 
     Parser prs = parser_init(src, strlen(src));

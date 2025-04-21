@@ -4,6 +4,7 @@
 #include "token.h"
 #include "list.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef enum AstTypeKind {
     AstType_Base,
@@ -88,10 +89,17 @@ typedef enum AstStmtKind {
     AstStmt_Expr,
 } AstItemKind;
 
-typedef struct AstStmtLet {
+typedef struct AstParam {
     AstPattern pat;
+} AstParam;
+
+typedef struct AstStmtLet {
+    AstPattern *pat;
     AstType *type;
     AstExpr *expr;
+
+    bool is_fn;
+    List params;
 } AstStmtLet;
 
 struct AstStmt {
@@ -99,6 +107,7 @@ struct AstStmt {
 
     union {
         List use;
+        AstStmtLet let;
         AstExpr *expr;
     };
 };

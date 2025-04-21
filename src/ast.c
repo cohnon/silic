@@ -1,4 +1,5 @@
 #include "ast.h"
+#include <stddef.h>
 
 static void print_expression(FILE *fp, AstExpr *expr);
 
@@ -6,6 +7,10 @@ static void print_indent(FILE *fp, int indent) {
     for (int i = 0; i < indent; i += 1) {
         fprintf(fp, "  ");
     }
+}
+
+static void print_pattern(FILE *fp, AstPattern *pat) {
+    fprintf(fp, "%.*s", pat->ident.len, pat->ident.src);
 }
 
 static void print_binary_operator(FILE *fp, AstExpr *expr) {
@@ -73,7 +78,24 @@ static void print_statement(FILE *fp, AstStmt *stmt) {
         case AstStmt_Use: fprintf(fp, "(use)\n"); break;
         case AstStmt_Let:
             fprintf(fp, "(let ");
-            print_expression(fp, stmt->expr);
+            print_pattern(fp, stmt->let.pat);
+            fprintf(fp, " ");
+
+            if (stmt->let.is_fn) {
+                fprintf(fp, "(");
+                for (size_t i = 0; i < stmt->let.params.len; i += 1) {
+                    AstPattern *param = list_get(&stmt->let.params, AstPattern *, i);
+                    print_pattern(fp, param);
+                    if (i < stmt->let.params.len - 1) {
+                        fprintf(fp, ", ");
+                    }
+                }
+                fprintf(fp, ") ");
+            }
+
+            fprintf(fp, "= ");
+
+            print_expression(fp, stmt->let.expr);
             fprintf(fp, ")\n");
             break;
         case AstStmt_Expr:
