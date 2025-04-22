@@ -6,13 +6,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-Parser parser_init(char *src, unsigned int len) {
-    Parser prs;
-    prs.lxr = lexer_init(src, len);
-
-    return prs;
-}
+typedef struct Parser {
+    Lexer lxr;
+} Parser;
 
 static AstPattern *parse_pattern(Parser *prs) {
     AstPattern *pat = malloc(sizeof(AstPattern));
@@ -276,15 +274,18 @@ static AstStmt *parse_top_level_statement(Parser *prs) {
     }
 }
 
-Ast *parser_parse(Parser *prs) {
+Ast *parser_parse(char *src) {
+    Parser prs;
+    prs.lxr = lexer_init(src, strlen(src));
+
     Ast *ast = malloc(sizeof(Ast));
     ast->stmts = list_init(AstStmt, 32);
 
     for (;;) {
-        switch (lexer_peek(&prs->lxr).kind) {
+        switch (lexer_peek(&prs.lxr).kind) {
             case Token_Eof: return ast;
 
-            default: list_push(&ast->stmts, AstStmt *, parse_top_level_statement(prs));
+            default: list_push(&ast->stmts, AstStmt *, parse_top_level_statement(&prs));
         }
     }
 }

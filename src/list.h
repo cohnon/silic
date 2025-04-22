@@ -16,8 +16,10 @@ void list_deinit(List *ls);
 
 void list_push_sized(List *ls, size_t item_size, void *item);
 #define list_push(ls, T, item) list_push_sized(ls, sizeof(T), &(T){ item })
+#define list_push_addr(ls, T, item) list_push_sized(ls, sizeof(T), item)
 
 void *list_get_sized(List *ls, size_t item_size, size_t idx);
-#define list_get(ls, T, idx) *(T*)list_get_sized(ls, sizeof(T), idx)
+#define list_get(ls, T, idx) (*(T*)list_get_sized(ls, sizeof(T), idx))
+#define list_get_ref(ls, T, idx) ((T*)list_get_sized(ls, sizeof(T), idx))
 
 #endif

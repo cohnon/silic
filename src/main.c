@@ -1,16 +1,12 @@
-#include "fe/parser.h"
-
-#include <string.h>
+#include "module.h"
+#include "program.h"
 
 int main(void) {
-    char *src =
-        "let add (a, b) = a + b\n"
-    ;
+    Program prg = program_init("/src");
 
-    Parser prs = parser_init(src, strlen(src));
-    Ast *ast = parser_parse(&prs);
+    program_compile(&prg);
 
-    print_ast(stderr, ast);
+    print_ast(stderr, list_get_ref(&prg.mods, Module, 0)->ast);
 
     return 0;
 }
