@@ -12,6 +12,21 @@ typedef struct Parser {
     Lexer lxr;
 } Parser;
 
+static AstType *parse_type(Parser *prs) {
+    AstType *type = malloc(sizeof(AstType));
+    type->kind = AstType_Base;
+    type->base.tok = lexer_expect(&prs->lxr, Token_IdentUpper);
+
+    return type;
+}
+
+static AstType *implicit_type(void) {
+    AstType *type = malloc(sizeof(AstType));
+    type->kind = AstType_Implicit;
+
+    return type;
+}
+
 static AstPattern *parse_pattern(Parser *prs) {
     AstPattern *pat = malloc(sizeof(AstPattern));
     pat->ident = lexer_expect(&prs->lxr, Token_IdentLower);
@@ -128,7 +143,7 @@ static AstExpr *parse_expression_primary(Parser *prs) {
             fprintf(
                 stderr,
                 "unexpected expression token %s\n",
-                token_fmt(lexer_peek(&prs->lxr).kind)
+                token_string(lexer_peek(&prs->lxr).kind)
             );
             exit(1);
     }
@@ -218,12 +233,22 @@ static AstStmt *parse_let(Parser *prs) {
     stmt->let.is_fn = false;
     if (lexer_peek(&prs->lxr).kind != Token_Equal) {
         stmt->let.is_fn = true;
-        stmt->let.params = list_init(AstPattern *, 8);
+        stmt->let.params = list_init(AstParam, 8);
 
         lexer_expect(&prs->lxr, Token_ParenOpen);
 
         while (lexer_peek(&prs->lxr).kind != Token_ParenClose) {
-            list_push(&stmt->let.params, AstPattern *, parse_pattern(prs));
+            AstParam param;
+            param.name = lexer_expect(&prs->lxr, Token_IdentLower);
+
+            if (lexer_peek(&prs->lxr).kind == Token_Colon) {
+                lexer_bump(&prs->lxr);
+                param.type = parse_type(prs);
+            } else {
+                param.type = implicit_type();
+            }
+
+            list_push_addr(&stmt->let.params, AstParam, &param);
 
             if (lexer_peek(&prs->lxr).kind == Token_Comma) {
                 lexer_bump(&prs->lxr);
@@ -234,6 +259,12 @@ static AstStmt *parse_let(Parser *prs) {
         }
 
         lexer_expect(&prs->lxr, Token_ParenClose);
+
+        // return
+        if (lexer_peek(&prs->lxr).kind == Token_ArrowRight) {
+            lexer_bump(&prs->lxr); // ->
+            stmt->let.type = parse_type(prs);
+        }
     }
 
     lexer_expect(&prs->lxr, Token_Equal);
@@ -268,7 +299,7 @@ static AstStmt *parse_top_level_statement(Parser *prs) {
             fprintf(
                 stderr,
                 "unexpected top level statement: %s\n",
-                token_fmt(lexer_peek(&prs->lxr).kind)
+                token_string(lexer_peek(&prs->lxr).kind)
             );
             exit(1);
     }

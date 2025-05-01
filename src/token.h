@@ -43,6 +43,7 @@ typedef struct Token {
     char *src;
 } Token;
 
-char *token_fmt(TokenKind kind);
+char *token_string(TokenKind kind);
+#define token_fmt(tok) tok.len, tok.src
 
 #endif

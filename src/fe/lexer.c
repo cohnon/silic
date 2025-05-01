@@ -163,7 +163,7 @@ Token lexer_expect(Lexer *lxr, TokenKind expected) {
     Token tok = lexer_bump(lxr);
 
     if (tok.kind != expected) {
-        fprintf(stderr, "Lexer Error: expected %s, got %s\n", token_fmt(expected), token_fmt(tok.kind));
+        fprintf(stderr, "Lexer Error: expected %s, got %s\n", token_string(expected), token_string(tok.kind));
         exit(1);
     }
 

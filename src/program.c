@@ -11,7 +11,7 @@ Program program_init(char *root_mod_path) {
 
 void program_compile(Program *prg) {
     char *src =
-        "let add (a, b) = a + b\n"
+        "let add (a:I32, b:I32) -> I32 = a + b\n"
     ;
 
     Module root_mod = module_init(src);

@@ -9,6 +9,10 @@ static void print_indent(FILE *fp, int indent) {
     }
 }
 
+static void print_type(FILE *fp, AstType *type) {
+    fprintf(fp, "%.*s", token_fmt(type->base.tok));
+}
+
 static void print_pattern(FILE *fp, AstPattern *pat) {
     fprintf(fp, "%.*s", pat->ident.len, pat->ident.src);
 }
@@ -77,26 +81,27 @@ static void print_statement(FILE *fp, AstStmt *stmt) {
     switch (stmt->kind) {
         case AstStmt_Use: fprintf(fp, "(use)\n"); break;
         case AstStmt_Let:
-            fprintf(fp, "(let ");
+            fprintf(fp, "let ");
             print_pattern(fp, stmt->let.pat);
-            fprintf(fp, " ");
 
             if (stmt->let.is_fn) {
-                fprintf(fp, "(");
+                fprintf(fp, " (");
                 for (size_t i = 0; i < stmt->let.params.len; i += 1) {
-                    AstPattern *param = list_get(&stmt->let.params, AstPattern *, i);
-                    print_pattern(fp, param);
+                    AstParam *param = list_get_ref(&stmt->let.params, AstParam, i);
+                    fprintf(fp, "%.*s:", token_fmt(param->name));
+                    print_type(fp, param->type);
                     if (i < stmt->let.params.len - 1) {
                         fprintf(fp, ", ");
                     }
                 }
-                fprintf(fp, ") ");
+                fprintf(fp, ") -> ");
+                print_type(fp, stmt->let.type);
             }
 
-            fprintf(fp, "= ");
+            fprintf(fp, " = ");
 
             print_expression(fp, stmt->let.expr);
-            fprintf(fp, ")\n");
+            fprintf(fp, "\n");
             break;
         case AstStmt_Expr:
             print_expression(fp, stmt->expr);

@@ -10,10 +10,18 @@ typedef enum AstTypeKind {
     AstType_Base,
     AstType_Pointer,
     AstType_Array,
+    AstType_Implicit,
 } AstTypeKind;
+
+typedef struct AstTypeBase {
+    Token tok;
+} AstTypeBase;
 
 typedef struct AstType {
     AstTypeKind kind;
+    union {
+        AstTypeBase base;
+    };
 } AstType;
 
 typedef struct AstPattern {
@@ -90,7 +98,8 @@ typedef enum AstStmtKind {
 } AstItemKind;
 
 typedef struct AstParam {
-    AstPattern pat;
+    Token name;
+    AstType *type;
 } AstParam;
 
 typedef struct AstStmtLet {

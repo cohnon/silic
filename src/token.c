@@ -1,6 +1,6 @@
 #include "token.h"
 
-char *token_fmt(TokenKind kind) {
+char *token_string(TokenKind kind) {
     switch (kind) {
         case Token_Invalid: return "<invalid>";
         case Token_Eof: return "<eof>";
